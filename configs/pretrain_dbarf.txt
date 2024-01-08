@@ -4,15 +4,17 @@ rootdir = # REPLACE THIS with YOUR PATH.
 render_stride = 2
 distributed = False
 enable_tensorboard = True
-enable_visdom = True
+enable_visdom = False
+
+# ckpt_path = 
 
 ## dataset
-train_dataset = llff+ibrnet_collected
+train_dataset = ibrnet_collected
 dataset_weights = [0.5, 0.5]
 eval_dataset = llff_test
 eval_scenes = [trex, fern, flower, leaves, room, fortress, horns, orchids]
 num_source_views = 5
-selection_rule = view_graph
+selection_rule = pose
 
 ### TRAINING
 N_rand = 500

@@ -180,8 +180,8 @@ class BaseTrainer(object):
 
         iter_start = self.load_checkpoint(load_optimizer=not self.config.no_load_opt,
                                           load_scheduler=not self.config.no_load_scheduler)
-        if iter_start == 0:
-            iter_start = int(self.config.ckpt_path[-10:-4])
+        # if iter_start == 0:
+        #     iter_start = int(self.config.ckpt_path[-10:-4])
         
         if self.config.distributed:
             # NOTE: Distributed mode can only be activated after loading models.
@@ -193,7 +193,8 @@ class BaseTrainer(object):
         while self.iteration < iter_start:
             pbar.update(1)
             self.iteration += 1
-
+            
+        print(f'train set len {len(self.train_loader)}')
         while self.iteration < self.config.n_iters + 1:
             for self.train_data in self.train_loader:
                 if self.config.distributed:

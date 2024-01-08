@@ -70,13 +70,13 @@ class LLFFTestDataset(Dataset):
             i_train = np.array([j for j in np.arange(int(poses.shape[0])) if
                                 (j not in i_test and j not in i_test)])
 
-            pose_initializer = PoseInitializer(
-                data_path=scene_path,
-                image_ids=i_train,
-                load_external=True,
-                args=args
-            )
-            self.train_view_graphs.append(pose_initializer.view_graph)
+            # pose_initializer = PoseInitializer(
+            #     data_path=scene_path,
+            #     image_ids=i_train,
+            #     load_external=True,
+            #     args=args
+            # )
+            # self.train_view_graphs.append(pose_initializer.view_graph)
             
             idx_to_node_id, node_id_to_idx = {}, {}
             for j in range(i_train.shape[0]):
@@ -123,7 +123,7 @@ class LLFFTestDataset(Dataset):
         train_rgb_files = self.train_rgb_files[train_set_id]
         train_poses = self.train_poses[train_set_id]
         train_intrinsics = self.train_intrinsics[train_set_id]
-        view_graph = self.train_view_graphs[train_set_id]
+        # view_graph = self.train_view_graphs[train_set_id]
         idx_to_node_id = self.idx_to_node_id_list[train_set_id]
         node_id_to_idx = self.node_id_to_idx_list[train_set_id]
 

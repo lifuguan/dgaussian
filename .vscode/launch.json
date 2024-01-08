@@ -1,0 +1,26 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "train:dbarf",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_dbarf.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth"]
+        },
+        {
+            "name": "test:dbarf",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval/eval_dbarf.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "fern"]
+        }
+    ]
+}

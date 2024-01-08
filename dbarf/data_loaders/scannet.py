@@ -16,7 +16,7 @@ from .data_utils import random_crop, random_flip
 #### FUNCTIONS
 ########################################################################################################################
 
-def resize_image(image, shape, interpolation=Image.ANTIALIAS):
+def resize_image(image, shape):
     """
     Resizes input image.
 
