@@ -184,5 +184,22 @@ class IBRNetCollectedDataset(Dataset):
                 'src_rgbs': torch.from_numpy(src_rgbs[..., :3]),
                 'src_cameras': torch.from_numpy(src_cameras),
                 'depth_range': depth_range,
-                'scaled_shape': (378, 504)
+                'scaled_shape': (378, 504),
+                "context": {
+                        "extrinsics": extrinsics[context_indices],
+                        "intrinsics": intrinsics[context_indices],
+                        "image": context_images,
+                        "near": self.get_bound("near", len(context_indices)) / scale,
+                        "far": self.get_bound("far", len(context_indices)) / scale,
+                        "index": context_indices,
+                },
+                "target": {
+                        "extrinsics": extrinsics[target_indices],
+                        "intrinsics": intrinsics[target_indices],
+                        "image": target_images,
+                        "near": self.get_bound("near", len(target_indices)) / scale,
+                        "far": self.get_bound("far", len(target_indices)) / scale,
+                        "index": target_indices,
+                },
+                
                 }

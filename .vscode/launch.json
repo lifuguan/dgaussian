@@ -14,13 +14,27 @@
             "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth"]
         },
         {
+            "env": {"CUDA_VISIBLE_DEVICES": "7",},
             "name": "test:dbarf",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/eval/eval_dbarf.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "fern"]
+            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "room"]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7",
+                "PYTHONPATH":"${workspaceFolder}"
+            },
+            "name": "test:dgaussian",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval/eval_dgaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dbarf_model_200000.pth"]
         }
     ]
 }

@@ -13,7 +13,7 @@ train_dataset = ibrnet_collected
 dataset_weights = [0.5, 0.5]
 eval_dataset = llff_test
 eval_scenes = [trex, fern, flower, leaves, room, fortress, horns, orchids]
-num_source_views = 5
+num_source_views = 2
 selection_rule = pose
 
 ### TRAINING

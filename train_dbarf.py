@@ -14,7 +14,7 @@ from dbarf.render_image import render_single_image
 from dbarf.sample_ray import RaySamplerSingleImage
 from dbarf.visualization.pose_visualizer import visualize_cameras
 from dbarf.visualization.feature_visualizer import *
-from utils import img2mse, mse2psnr, img_HWC2CHW, colorize, img2psnr
+from utils_loc import img2mse, mse2psnr, img_HWC2CHW, colorize, img2psnr
 from train_ibrnet import IBRNetTrainer, synchronize
 import dbarf.config as config
 

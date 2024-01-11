@@ -10,7 +10,7 @@ from scipy.spatial.transform import Rotation
 from dbarf.base.checkpoint_manager import CheckPointManager
 from dbarf.config import config_parser
 from dbarf.model.dbarf import DBARFModel
-from utils import *
+from utils_loc import *
 from dbarf.data_loaders import dataset_dict
 from dbarf.pose_util import Pose
 from dbarf.geometry.align_poses import align_ate_c2b_use_a2b

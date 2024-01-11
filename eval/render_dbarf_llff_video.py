@@ -25,7 +25,7 @@ from dbarf.config import config_parser
 from dbarf.sample_ray import RaySamplerSingleImage
 from dbarf.render_image import render_single_image
 from dbarf.model.dbarf import DBARFModel
-from utils import *
+from utils_loc import *
 from dbarf.projection import Projector
 from dbarf.data_loaders import get_nearest_pose_ids
 from dbarf.data_loaders.llff_data_utils import load_llff_data, batch_parse_llff_poses

@@ -3,3 +3,4 @@ scripts/shell/Hierarchical-Localization
 __pycache__/
 data
 model_zoo
+outputs

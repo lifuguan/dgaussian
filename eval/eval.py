@@ -26,7 +26,7 @@ from dbarf.config import config_parser
 from dbarf.sample_ray import RaySamplerSingleImage
 from dbarf.render_image import render_single_image
 from dbarf.model.ibrnet import IBRNetModel
-from utils import *
+from utils_loc import *
 from dbarf.projection import Projector
 from dbarf.data_loaders import dataset_dict
 from dbarf.loss.ssim_torch import ssim as ssim_torch
