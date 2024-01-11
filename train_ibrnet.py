@@ -14,7 +14,7 @@ from dbarf.model.ibrnet import IBRNetModel
 from dbarf.sample_ray import RaySamplerSingleImage
 from dbarf.loss.criterion import MaskedL2ImageLoss
 from dbarf.projection import Projector
-from utils import img2mse, mse2psnr, img_HWC2CHW, colorize, img2psnr
+from utils_loc import img2mse, mse2psnr, img_HWC2CHW, colorize, img2psnr
 import dbarf.config as config
 
 

@@ -61,6 +61,7 @@ class PixelSplat(nn.Module):
             (h, w),
             depth_mode='depth'
         )
-        target_gt = batch["target"]["image"]
         
-        return output, target_gt
+        ret = {'rgb': output.color, 'depth': output.depth}
+        target_gt = {'rgb': batch["target"]["image"]}
+        return ret, target_gt

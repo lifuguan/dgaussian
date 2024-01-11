@@ -182,3 +182,17 @@ def colorize(x, cmap_name='jet', mask=None, range=None, append_cbar=False, cbar_
     x = torch.from_numpy(x).to(device)
     return x
 
+
+def data_shim(data: dict, device = 'cuda:0') -> dict:
+    '''
+    Shim for data loader.
+    '''
+    batch = {}; batch['scene'] = 'unknown'
+    for key, value in data['context'].items():
+        if torch.is_tensor(value):
+            data['context'][key] = value.to(device)
+    for key, value in data['target'].items():
+        if torch.is_tensor(value):
+            data['target'][key] = value.to(device)
+    batch['context'], batch['target'] = data['context'], data['target']
+    return batch

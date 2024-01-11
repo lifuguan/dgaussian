@@ -16,18 +16,26 @@ local_rank : 0
 
 ## dataset
 train_dataset : ibrnet_collected
+train_scenes : 
 dataset_weights : [0.5, 0.5]
 eval_dataset : llff_test
-# eval_scenes : [trex, fern, flower, leaves, room, fortress, horns, orchids]
-eval_scenes : [room]
+eval_scenes : [trex, fern, flower, leaves, room, fortress, horns, orchids]
+# eval_scenes : [room]
+
 num_source_views : 5
+workers : 8
+
 selection_rule : pose
 random_crop : False
 outlier_ratio : 0.2
 noise_level : 0.15
 testskip : 8
 
+no_load_opt: True
+no_load_scheduler: True
+
 ### TRAINING
+n_iters: 250000
 N_rand : 500
 lrate_feature : 0.001
 lrate_mlp : 0.0005

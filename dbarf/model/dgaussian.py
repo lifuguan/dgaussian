@@ -3,20 +3,31 @@ import math
 
 import torch
 
-from dbarf.model.ibrnet import IBRNetModel
+from dbarf.model.feature_network import ResUNet
 from dbarf.depth_pose_network import DepthPoseNet
 from dbarf.loss.photometric_loss import MultiViewPhotometricDecayLoss
 
+from dbarf.base.model_base import Model
 
-class DBARFModel(IBRNetModel):
+from dbarf.model.pixelsplat.decoder import get_decoder
+from dbarf.model.pixelsplat.encoder import get_encoder
+from dbarf.model.pixelsplat.pixelsplat import PixelSplat
+
+class DGaussianModel(Model):
     def __init__(self, args, load_opt=True, load_scheduler=True, pretrained=True):
         device = torch.device(f'cuda:{args.local_rank}')
-
+        
         # create pose optimizer.
         self.pose_learner = DepthPoseNet(iters=12, pretrained=pretrained).to(device)
+        
+        # create generalized 3d gaussian.
+        encoder, encoder_visualizer = get_encoder(args.pixelsplat.encoder)
+        decoder = get_decoder(args.pixelsplat.decoder)
+        self.gaussian_model = PixelSplat(encoder, decoder, encoder_visualizer)
+        self.gaussian_model.to(device)
+        # self.gaussian_model.load_state_dict(torch.load('model_zoo/re10k.ckpt')['state_dict'])
+        
         self.photometric_loss = MultiViewPhotometricDecayLoss()
-
-        super(DBARFModel, self).__init__(args, load_opt, load_scheduler, half_feat_dim=True)
 
     def to_distributed(self):
         super().to_distributed()
@@ -27,7 +38,20 @@ class DBARFModel(IBRNetModel):
                 device_ids=[self.args.local_rank],
                 output_device=[self.args.local_rank]
             )
+            self.gaussian_model = torch.nn.parallel.DistributedDataParallel(
+                self.gaussian_model,
+                device_ids=[self.args.local_rank],
+                output_device=[self.args.local_rank]
+            )
 
+    def switch_to_eval(self):
+        self.pose_learner.eval()
+        self.gaussian_model.eval()
+
+    def switch_to_train(self):
+        self.net_coarse.train()
+        self.gaussian_model.train()
+            
     def correct_poses(self, fmaps, target_image, ref_imgs, target_camera, ref_cameras,
                       min_depth=0.1, max_depth=100, scaled_shape=(378, 504)):
         """
@@ -62,26 +86,18 @@ class DBARFModel(IBRNetModel):
 
         return inv_depths, rel_poses, sfm_loss, fmap
 
-    def switch_to_eval(self):
-        super().switch_to_eval()
-        self.pose_learner.eval()
-
-    def switch_to_train(self):
-        super().switch_to_train()
-        self.pose_learner.train()
-
     def switch_state_machine(self, state='joint') -> str:
         if state == 'pose_only':
             self._set_pose_learner_state(opt=True)
-            self._set_nerf_state(opt=False)
+            self._set_gaussian_state(opt=False)
         
         elif state == 'nerf_only':
             self._set_pose_learner_state(opt=False)
-            self._set_nerf_state(opt=True)
+            self._set_gaussian_state(opt=True)
         
         elif state == 'joint':
             self._set_pose_learner_state(opt=True)
-            self._set_nerf_state(opt=True)
+            self._set_gaussian_state(opt=True)
         
         else:
             raise NotImplementedError("Not supported state")
@@ -92,16 +108,9 @@ class DBARFModel(IBRNetModel):
         for param in self.pose_learner.parameters():
             param.requires_grad = opt
 
-    def _set_nerf_state(self, opt=True):
-        for param in self.net_coarse.parameters():
+    def _set_gaussian_state(self, opt=True):
+        for param in self.gaussian_model.parameters():
             param.requires_grad = opt
-        
-        for param in self.feature_net.parameters():
-            param.requires_grad = opt
-
-        if self.net_fine is not None:
-            for param in self.net_fine.parameters():
-                param.requires_grad = opt
     
     def compose_joint_loss(self, sfm_loss, nerf_loss, step, coefficient=1e-5):
         # The jointly training loss is composed by the convex_combination:

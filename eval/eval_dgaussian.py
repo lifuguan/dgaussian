@@ -69,21 +69,6 @@ def compose_state_dicts(model) -> dict:
 
     return state_dicts
 
-def data_shim(data: dict, device = 'cuda:0') -> dict:
-    '''
-    Shim for data loader.
-    '''
-    batch = {}; batch['scene'] = 'unknown'
-    for key, value in data['context'].items():
-        if torch.is_tensor(value):
-            data['context'][key] = value.to(device)
-    for key, value in data['target'].items():
-        if torch.is_tensor(value):
-            data['target'][key] = value.to(device)
-    batch['context'], batch['target'] = data['context'], data['target']
-    return batch
-
-
 @hydra.main(
     version_base=None,
     config_path="../configs",
@@ -114,7 +99,6 @@ def eval(cfg_dict: DictConfig):
     print("saving results to {}...".format(extra_out_dir))
     os.makedirs(extra_out_dir, exist_ok=True)
 
-    projector = Projector(device='cuda:0')
 
     assert len(args.eval_scenes) == 1, "only accept single scene"
     scene_name = args.eval_scenes[0]

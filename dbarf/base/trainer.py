@@ -15,7 +15,7 @@ from tensorboardX import SummaryWriter
 from dbarf.base.checkpoint_manager import CheckPointManager
 from dbarf.data_loaders import dataset_dict
 from dbarf.data_loaders.create_training_dataset import create_training_dataset
-from utils import cycle
+from utils_loc import cycle
 
 
 def check_socket_open(hostname, port):

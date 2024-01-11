@@ -144,8 +144,8 @@ class CheckPointManager(object):
         if config.distributed:
             state = torch.load(checkpoint_name, map_location=f'cuda:{config.local_rank}')
         else:
-            state = torch.load(checkpoint_name)
-        # state = torch.load(checkpoint_name, map_location=device)
+            # state = torch.load(checkpoint_name)
+            state = torch.load(checkpoint_name, map_location='cuda:0')
 
         step = 0
         if 'step' in state:

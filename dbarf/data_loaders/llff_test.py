@@ -243,14 +243,6 @@ class LLFFTestDataset(Dataset):
                         "index": torch.tensor([train_set_id]),
                 },
                 }
-
-    # def get_bound(
-    #     self,
-    #     bound: Literal["near", "far"],
-    #     num_views: int,
-    # ) -> Float[Tensor, " view"]:
-    #     value = torch.tensor(getattr(self, bound), dtype=torch.float32)
-    #     return repeat(value, "-> v", v=num_views)
     def normalize_intrinsics(self, intrinsics, img_size):
         h, w = img_size
         # 归一化内参矩阵

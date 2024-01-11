@@ -16,7 +16,7 @@
 import torch
 import torch.nn as nn
 
-from utils import img2mse
+from utils_loc import img2mse
 from dbarf.geometry.depth import depth2inv
 
 
@@ -29,7 +29,10 @@ class MaskedL2ImageLoss(nn.Module):
         training criterion
         '''
         pred_rgb = outputs['rgb']
-        pred_mask = outputs['mask'].float()
+        if 'mask' in outputs:
+            pred_mask = outputs['mask'].float()
+        else:
+            pred_mask = None
         gt_rgb = ray_batch['rgb']
 
         loss = img2mse(pred_rgb, gt_rgb, pred_mask)
