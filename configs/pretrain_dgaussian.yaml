@@ -35,7 +35,7 @@ no_load_opt: True
 no_load_scheduler: True
 
 ### TRAINING
-n_iters: 250000
+n_iters: 25000
 N_rand : 500
 lrate_feature : 0.001
 lrate_mlp : 0.0005
@@ -63,8 +63,8 @@ feat_loss_scale : 1e1
 
 ### CONSOLE AND TENSORBOARD
 n_validation : 2000
-n_tensorboard : 100
-n_checkpoint : 5000
+n_tensorboard : 10
+n_checkpoint : 2000
 visdom_port : 9000
 
 ### evaluation options

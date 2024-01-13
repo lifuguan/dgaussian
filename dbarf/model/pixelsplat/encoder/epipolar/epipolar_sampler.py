@@ -97,8 +97,8 @@ class EpipolarSampler(nn.Module):
         # were taken, and the diagonal were then removed again.
         samples = self.transpose(xy_sample)
         samples = F.grid_sample(
-            rearrange(images, "b v c h w -> (b v) c h w"),
-            rearrange(2 * samples - 1, "b v ov r s xy -> (b v) (ov r s) () xy"),
+            rearrange(images, "b v c h w -> (b v) c h w"),     # n views, features, h, w
+            rearrange(2 * samples - 1, "b v ov r s xy -> (b v) (ov r s) () xy"), # n views, n other views, h*w, sample, 2
             mode="bilinear",
             padding_mode="zeros",
             align_corners=False,
@@ -137,13 +137,13 @@ class EpipolarSampler(nn.Module):
         simply arranged in a grid.
         """
         b, v, _, h, w = images.shape
-        xy, _ = sample_image_grid((h, w), device=images.device)
+        xy, _ = sample_image_grid((h, w), device=images.device)    # (h, w, 2)
         origins, directions = get_world_rays(
             rearrange(xy, "h w xy -> (h w) xy"),
             rearrange(extrinsics, "b v i j -> b v () i j"),
             rearrange(intrinsics, "b v i j -> b v () i j"),
         )
-        return repeat(xy, "h w xy -> b v (h w) xy", b=b, v=v), origins, directions
+        return repeat(xy, "h w xy -> b v (h w) xy", b=b, v=v), origins, directions   # 1, 3, 11408, 2
 
     def transpose(
         self,

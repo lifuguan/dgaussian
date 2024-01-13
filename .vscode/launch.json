@@ -29,13 +29,26 @@
                 "CUDA_VISIBLE_DEVICES": "7",
                 "PYTHONPATH":"${workspaceFolder}"
             },
-            "name": "test:dgaussian",
+            "name": "test:dgaussian-2",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/eval/eval_dgaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dbarf_model_200000.pth"]
+            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dbarf_model_200000.pth", "++eval_scenes=[trex]", "++num_source_views=2"]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7",
+                "PYTHONPATH":"${workspaceFolder}"
+            },
+            "name": "test:dgaussian-3",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval/eval_dgaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dbarf_model_200000.pth", "++eval_scenes=[room]", "++num_source_views=5"]
         },
         {
             "env": {
@@ -48,7 +61,20 @@
             "program": "${workspaceFolder}/train_dgaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dgaussian.pth"]
+            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dgaussian.pth","++num_source_views=2"]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7",
+                "PYTHONPATH":"${workspaceFolder}"
+            },
+            "name": "train:gaussian",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dgaussian.pth","++num_source_views=2"]
         }
     ]
 }

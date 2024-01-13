@@ -119,10 +119,20 @@ class EpipolarTransformer(nn.Module):
         else:
             q = sampling.features
 
+        # TODO: 意义不明
+        # if q.shape[2] > 1:
+        #     # q = q[:,:,0,:,:,:].unsqueeze(2)
+        #     q = q.mean(dim=2, keepdims=True)
+        #     # import torch.nn.functional as F
+        #     # b_, v_, ov_, r_, s_, c_ = q.shape
+        #     # q = q.reshape(b_*v_, ov_, r_ * s_ * c_)
+        #     # q = F.max_pool1d(q, kernel_size=4).reshape(b_, v_, -1, r_, s_, c_)
+        
         # Run the transformer.
         kv = rearrange(features, "b v c h w -> (b v h w) () c")
         features = self.transformer.forward(
-            kv,
+            kv,       # 当作query
+            # rearrange(q, "b v ov r s c -> (b v ov r) s c"),    # 当作 key & value
             rearrange(q, "b v () r s c -> (b v r) s c"),
             b=b,
             v=v,

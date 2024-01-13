@@ -10,8 +10,8 @@ import numpy as np
 from typing import Tuple
 from easydict import EasyDict as edict
 from einops import rearrange
-from hloc.utils.database import COLMAPDatabase, blob_to_array, \
-    pair_id_to_image_ids, image_ids_to_pair_id
+# from hloc.utils.database import COLMAPDatabase, blob_to_array, \
+    # pair_id_to_image_ids, image_ids_to_pair_id
 
 from dbarf.geometry.lie_group import SE3q, SE3
 from dbarf.geometry.utils import get_all_g2o_files, read_g2o_file, read_g2o_file_valid

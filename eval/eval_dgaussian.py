@@ -78,7 +78,9 @@ def compose_state_dicts(model) -> dict:
 def eval(cfg_dict: DictConfig):
     args = cfg_dict
     args.distributed = False
-
+    # args.pixelsplat['encoder']['epipolar_transformer']['num_context_views'] = args.num_source_views
+    
+    
     # Create IBRNet model
     model = DBARFModel(args, load_scheduler=False, load_opt=False, pretrained=False)
     state_dicts = compose_state_dicts(model=model)
@@ -166,8 +168,8 @@ def eval(cfg_dict: DictConfig):
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_color_depth.png'),
                             (pred_depth.numpy() * 255.).astype(np.uint8))
 
-            gt_rgb = gt_rgb.detach().cpu()[0][0].permute(1, 2, 0)
-            coarse_pred_rgb = output.color.detach().cpu()[0][0].permute(1, 2, 0)
+            gt_rgb = gt_rgb['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
+            coarse_pred_rgb = output['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
             coarse_err_map = torch.sum((coarse_pred_rgb - gt_rgb) ** 2, dim=-1).numpy()
             coarse_err_map_colored = (colorize_np(coarse_err_map, range=(0., 1.)) * 255).astype(np.uint8)
 
@@ -187,7 +189,7 @@ def eval(cfg_dict: DictConfig):
             gt_rgb_np_uint8 = (255 * np.clip(gt_rgb.numpy(), a_min=0, a_max=1.)).astype(np.uint8)
             imageio.imwrite(os.path.join(out_scene_dir, '{}_gt_rgb.png'.format(file_id)), gt_rgb_np_uint8)
 
-            coarse_pred_depth = output.depth.detach().cpu()[0][0]
+            coarse_pred_depth = output['depth'].detach().cpu()[0][0]
             imageio.imwrite(os.path.join(out_scene_dir, '{}_depth_coarse.png'.format(file_id)),
                             (coarse_pred_depth.numpy().squeeze() * 1000.).astype(np.uint16))
             coarse_pred_depth_colored = colorize_np(coarse_pred_depth,

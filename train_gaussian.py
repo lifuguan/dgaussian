@@ -7,16 +7,10 @@ from omegaconf import DictConfig
 import torch
 import torch.utils.data.distributed
 
-from dbarf.geometry.depth import inv2depth
+
 from dbarf.geometry.align_poses import align_ate_c2b_use_a2b
-from dbarf.model.dbarf import DBARFModel
-from dbarf.model.dgaussian import DGaussianModel
-from dbarf.projection import Projector
+from dbarf.model.gaussian import GaussianModel
 from dbarf.pose_util import Pose, rotation_distance
-from dbarf.render_ray import render_rays
-from dbarf.render_image import render_single_image
-from dbarf.sample_ray import RaySamplerSingleImage
-from dbarf.visualization.pose_visualizer import visualize_cameras
 from dbarf.visualization.feature_visualizer import *
 from utils_loc import img2mse, mse2psnr, img_HWC2CHW, colorize, img2psnr, data_shim
 from train_ibrnet import synchronize
@@ -27,14 +21,14 @@ from dbarf.loss.criterion import MaskedL2ImageLoss
 
 # torch.autograd.set_detect_anomaly(True)
 
-class DGaussianTrainer(BaseTrainer):
+class GaussianTrainer(BaseTrainer):
     def __init__(self, config) -> None:
         super().__init__(config)
         
         self.state = 'pose_only'
 
     def build_networks(self):
-        self.model = DGaussianModel(self.config,
+        self.model = GaussianModel(self.config,
                                 load_opt=not self.config.no_load_opt,
                                 load_scheduler=not self.config.no_load_scheduler,
                                 pretrained=self.config.pretrained)
@@ -49,23 +43,13 @@ class DGaussianTrainer(BaseTrainer):
                                                          gamma=self.config.lrate_decay_factor)
 
 
-        self.pose_optimizer = torch.optim.Adam([
-            dict(params=self.model.pose_learner.parameters(), lr=self.config.lrate_pose)
-        ])
-        self.pose_scheduler = torch.optim.lr_scheduler.StepLR(
-            self.pose_optimizer, step_size=self.config.lrate_decay_pose_steps, gamma=0.5)
-
     def setup_loss_functions(self):
         self.rgb_loss = MaskedL2ImageLoss()
 
 
     def compose_state_dicts(self) -> None:
         self.state_dicts = {'models': dict(), 'optimizers': dict(), 'schedulers': dict()}
-        self.state_dicts['models']['pose_learner'] = self.model.pose_learner
         self.state_dicts['models']['gaussian'] = self.model.gaussian_model
-        
-        self.state_dicts['optimizers']['pose_optimizer'] = self.pose_optimizer
-        self.state_dicts['schedulers']['pose_scheduler'] = self.pose_scheduler
 
     def train_iteration(self, data_batch) -> None:
         ######################### 3-stages training #######################
@@ -78,26 +62,9 @@ class DGaussianTrainer(BaseTrainer):
         # |-------------------------->------------------------------------|
         if self.iteration % 4000 == 0 and (self.iteration // 4000) % 2 == 0:
             self.state = self.model.switch_state_machine(state='nerf_only')
-        elif self.iteration != 0 and self.iteration % 4000 == 0:
-            self.state = self.model.switch_state_machine(state='joint')
 
         min_depth, max_depth = data_batch['depth_range'][0][0], data_batch['depth_range'][0][1]
 
-        # Start of core optimization loop
-        pred_inv_depths, pred_rel_poses, sfm_loss, fmap = self.model.correct_poses(
-            fmaps=None,
-            target_image=data_batch['rgb'].cuda(),
-            ref_imgs=data_batch['src_rgbs'].cuda(),
-            target_camera=data_batch['camera'],
-            ref_cameras=data_batch['src_cameras'],
-            min_depth=min_depth,
-            max_depth=max_depth,
-            scaled_shape=data_batch['scaled_shape'])
-
-        # The predicted inverse depth is used as a weak supervision to NeRF.
-        self.pred_inv_depth = pred_inv_depths[-1]
-        inv_depth_prior = pred_inv_depths[-1].detach().clone()
-        inv_depth_prior = inv_depth_prior.reshape(-1, 1)
 
         batch = data_shim(data_batch, device=self.device)
         ret, data_gt = self.model.gaussian_model(batch, self.iteration)
@@ -111,13 +78,6 @@ class DGaussianTrainer(BaseTrainer):
 
         # compute loss
         self.optimizer.zero_grad()
-        self.pose_optimizer.zero_grad()
-
-        if self.state == 'pose_only' or self.state == 'joint':
-            loss_dict['sfm_loss'] = sfm_loss['loss']
-            self.scalars_to_log['loss/photometric_loss'] = sfm_loss['metrics']['photometric_loss']
-            if 'smoothness_loss' in sfm_loss['metrics']:
-                self.scalars_to_log['loss/smoothness_loss'] = sfm_loss['metrics']['smoothness_loss']
 
         coarse_loss = self.rgb_loss(ret, data_gt)
         loss_dict['gaussian_loss'] = coarse_loss
@@ -152,30 +112,13 @@ class DGaussianTrainer(BaseTrainer):
             self.scalars_to_log['loss/rgb_coarse'] = coarse_loss
             # print(f"corse loss: {mse_error}, psnr: {mse2psnr(mse_error)}")
             self.scalars_to_log['lr/Gaussian'] = self.scheduler.get_last_lr()[0]
-            self.scalars_to_log['lr/pose'] = self.pose_scheduler.get_last_lr()[0]
-            
-            aligned_pred_poses, poses_gt = align_predicted_training_poses(
-                pred_rel_poses[:, -1, :], self.train_data, self.train_dataset, self.config.local_rank)
-            pose_error = evaluate_camera_alignment(aligned_pred_poses, poses_gt)
-            visualize_cameras(self.visdom, step=self.iteration, poses=[aligned_pred_poses, poses_gt], cam_depth=0.1)
-
-            self.scalars_to_log['train/R_error_mean'] = pose_error['R_error_mean']
-            self.scalars_to_log['train/t_error_mean'] = pose_error['t_error_mean']
-            self.scalars_to_log['train/R_error_med'] = pose_error['R_error_med']
-            self.scalars_to_log['train/t_error_med'] = pose_error['t_error_med']
-
+        
     def validate(self) -> float:
         self.model.switch_to_eval()
 
         target_image = self.train_data['rgb'].squeeze(0).permute(2, 0, 1)
-        pred_inv_depth_gray = self.pred_inv_depth.squeeze(0).detach().cpu()
-        pred_inv_depth = self.pred_inv_depth.squeeze(0).squeeze(0)
-        pred_depth= inv2depth(pred_inv_depth)
-        pred_depth_color = colorize(pred_depth.detach().cpu(), cmap_name='jet', append_cbar=True).permute(2, 0, 1)
 
         self.writer.add_image('train/target_image', target_image, self.iteration)
-        self.writer.add_image('train/pred_inv_depth', pred_inv_depth_gray, self.iteration)
-        self.writer.add_image('train/pred_depth-color', pred_depth_color, self.iteration)
 
         # Logging a random validation view.
         val_data = next(self.val_loader_iterator)
@@ -183,11 +126,6 @@ class DGaussianTrainer(BaseTrainer):
             self.writer, self.iteration, self.config, self.model,
             render_stride=self.config.render_stride, prefix='val/',
             data=val_data, dataset=self.val_dataset, device=self.device)
-
-        # Logging current training view.
-        log_view_to_tb(self.writer, self.iteration, self.config, self.model, 
-                       render_stride=1, prefix='train/', data=self.train_data, dataset=self.train_dataset)
-
         torch.cuda.empty_cache()
         self.model.switch_to_train()
 
@@ -242,27 +180,6 @@ def evaluate_camera_alignment(aligned_pred_poses, poses_gt):
 @torch.no_grad()
 def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='', data=None, dataset=None, device=None) -> float:
 
-    pred_inv_depth, pred_rel_poses, _, __ = model.correct_poses(
-                            fmaps=None,
-                            target_image=data['rgb'].cuda(),
-                            ref_imgs=data['src_rgbs'].cuda(),
-                            target_camera=data['camera'].cuda(),
-                            ref_cameras=data['src_cameras'].cuda(),
-                            min_depth=data['depth_range'][0][0],
-                            max_depth=data['depth_range'][0][1],
-                            scaled_shape=data['scaled_shape'])
-    inv_depth_prior = pred_inv_depth.reshape(-1, 1).detach().clone()
-
-    if prefix == 'val/':
-        pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0)
-        pred_inv_depth = colorize(pred_inv_depth.detach().cpu(), cmap_name='jet', append_cbar=True).permute(2, 0, 1)
-        writer.add_image(prefix + 'pred_inv_depth', pred_inv_depth, global_step)
-        aligned_pred_poses, poses_gt = align_predicted_training_poses(pred_rel_poses, data, dataset, args.local_rank)
-        pose_error = evaluate_camera_alignment(aligned_pred_poses, poses_gt)
-        writer.add_scalar('val/R_error_mean', pose_error['R_error_mean'], global_step)
-        writer.add_scalar('val/t_error_mean', pose_error['t_error_mean'], global_step)
-        writer.add_scalar('val/R_error_med', pose_error['R_error_med'], global_step)
-        writer.add_scalar('val/t_error_med', pose_error['t_error_med'], global_step)
 
     batch = data_shim(data, device=device)
     ret, data_gt = model.gaussian_model(batch, global_step)
@@ -323,7 +240,7 @@ def train(cfg_dict: DictConfig):
         
     device = "cuda:{}".format(args.local_rank)
 
-    trainer = DGaussianTrainer(args)
+    trainer = GaussianTrainer(args)
     trainer.train()
 
 if __name__ == '__main__':

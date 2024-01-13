@@ -35,7 +35,7 @@ epipolar_transformer:
   num_layers: 2
   num_heads: 4
   num_samples: 32
-  num_context_views: 5
+  num_context_views: 2
   d_dot: 128
   d_mlp: 256
   downscale: 4

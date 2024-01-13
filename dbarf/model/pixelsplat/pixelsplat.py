@@ -9,6 +9,7 @@ from einops import pack, rearrange, repeat
 from jaxtyping import Float
 from torch import Tensor, nn, optim
 
+from .types import Gaussians
 from ...dataset.data_module import get_data_shim
 from ...dataset.types import BatchedExample
 from .decoder.decoder import Decoder, DepthRenderingMode
@@ -51,7 +52,19 @@ class PixelSplat(nn.Module):
         _, _, _, h, w = batch["target"]["image"].shape
 
         # Run the model.
-        gaussians = self.encoder(batch["context"], global_step, False)
+        # for i in range(batch["context"]["image"].shape[1] - 1):
+        #     tmp_batch = self.batch_cut(batch["context"],i)
+        #     tmp_gaussians = self.encoder(tmp_batch, global_step, False)
+        #     if i == 0:
+        #         gaussians: Gaussians = tmp_gaussians
+        #     else:
+        #         gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
+        #         gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
+        #         gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
+        #         gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
+            
+        gaussians = self.encoder(batch['context'], global_step, False)
+            
         output = self.decoder.forward(
             gaussians,
             batch["target"]["extrinsics"],
@@ -65,3 +78,13 @@ class PixelSplat(nn.Module):
         ret = {'rgb': output.color, 'depth': output.depth}
         target_gt = {'rgb': batch["target"]["image"]}
         return ret, target_gt
+    
+    def batch_cut(self, batch, i):
+        return {
+            'extrinsics': batch['extrinsics'][:,i:i+2,:,:],
+            'intrinsics': batch['intrinsics'][:,i:i+2,:,:],
+            'image': batch['image'][:,i:i+2,:,:,:],
+            'near': batch['near'][:,i:i+2],
+            'far': batch['far'][:,i:i+2],
+            'index': batch['index'][:,i:i+2],
+        }
