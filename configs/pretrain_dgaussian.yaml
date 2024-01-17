@@ -15,8 +15,8 @@ pretrained : False
 local_rank : 0
 
 ## dataset
-train_dataset : ibrnet_collected
-train_scenes : 
+train_dataset : llff_test
+train_scenes : []
 dataset_weights : [0.5, 0.5]
 eval_dataset : llff_test
 eval_scenes : [trex, fern, flower, leaves, room, fortress, horns, orchids]

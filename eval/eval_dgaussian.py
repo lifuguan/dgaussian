@@ -86,14 +86,12 @@ def eval(cfg_dict: DictConfig):
     state_dicts = compose_state_dicts(model=model)
     ckpt_manager = CheckPointManager()
     start_step = ckpt_manager.load(config=args, models=state_dicts)
-    if start_step == 0:
-        start_step = int(args.ckpt_path[-10:-4])
     print(f'start_step: {start_step}')
     
     encoder, encoder_visualizer = get_encoder(args.pixelsplat.encoder)
     decoder = get_decoder(args.pixelsplat.decoder)
     gaussian_model = PixelSplat(encoder, decoder, encoder_visualizer)
-    gaussian_model.load_state_dict(torch.load('model_zoo/re10k.ckpt')['state_dict'])
+    gaussian_model.load_state_dict(torch.load(args.ckpt_path)['state_dict'])
     gaussian_model.cuda()
     
     eval_dataset_name = args.eval_dataset
@@ -160,6 +158,7 @@ def eval(cfg_dict: DictConfig):
             pred_depth = inv2depth(pred_inv_depth)
             
             batch = data_shim(data, "cuda:0")
+            batch = gaussian_model.data_shim(batch)
             output, gt_rgb = gaussian_model(batch, i)
             
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth.png'),

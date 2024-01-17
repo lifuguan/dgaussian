@@ -45,7 +45,7 @@ visualizer:
   min_resolution: 256
   export_ply: false
 
-apply_bounds_shim: false
+apply_bounds_shim: true
 
 # Use this to ablate the epipolar transformer.
 use_epipolar_transformer: true

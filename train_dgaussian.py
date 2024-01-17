@@ -23,7 +23,7 @@ from train_ibrnet import synchronize
 from dbarf.base.trainer import BaseTrainer
 
 import dbarf.config as config
-from dbarf.loss.criterion import MaskedL2ImageLoss
+from dbarf.loss.criterion import MaskedL2ImageLoss, self_sup_depth_loss
 
 # torch.autograd.set_detect_anomaly(True)
 
@@ -76,13 +76,14 @@ class DGaussianTrainer(BaseTrainer):
         # |--> (3) Jointly train the pose optimizer and ibrnet.           |
         # |             (10000 iterations)                                |
         # |-------------------------->------------------------------------|
-        if self.iteration % 4000 == 0 and (self.iteration // 4000) % 2 == 0:
+        if self.iteration == 0:
             self.state = self.model.switch_state_machine(state='nerf_only')
-        elif self.iteration != 0 and self.iteration % 4000 == 0:
-            self.state = self.model.switch_state_machine(state='joint')
 
         min_depth, max_depth = data_batch['depth_range'][0][0], data_batch['depth_range'][0][1]
 
+        batch_ = data_shim(data_batch, device=self.device)
+        batch = self.model.gaussian_model.data_shim(batch_)
+        
         # Start of core optimization loop
         pred_inv_depths, pred_rel_poses, sfm_loss, fmap = self.model.correct_poses(
             fmaps=None,
@@ -98,16 +99,13 @@ class DGaussianTrainer(BaseTrainer):
         self.pred_inv_depth = pred_inv_depths[-1]
         inv_depth_prior = pred_inv_depths[-1].detach().clone()
         inv_depth_prior = inv_depth_prior.reshape(-1, 1)
-
-        batch = data_shim(data_batch, device=self.device)
+        
         ret, data_gt = self.model.gaussian_model(batch, self.iteration)
 
         loss_all = 0
         loss_dict = {}
 
-        # rendered_depth = ret['outputs_coarse']['depth']
-        # loss_depth = self_sup_depth_loss(inv_depth_prior, rendered_depth, min_depth, max_depth)
-        # scalars_to_log['loss/self-sup-depth'] = loss_depth
+
 
         # compute loss
         self.optimizer.zero_grad()
@@ -121,6 +119,9 @@ class DGaussianTrainer(BaseTrainer):
 
         coarse_loss = self.rgb_loss(ret, data_gt)
         loss_dict['gaussian_loss'] = coarse_loss
+        rendered_depth = ret['depth']
+        loss_depth = self_sup_depth_loss(inv_depth_prior, rendered_depth, min_depth, max_depth)
+        loss_dict['self-sup-depth'] = loss_depth
 
             
         if self.state == 'joint':
@@ -130,7 +131,7 @@ class DGaussianTrainer(BaseTrainer):
         elif self.state == 'pose_only':
             loss_all += loss_dict['sfm_loss']
         else: # nerf_only
-            # loss_all += loss_depth.item()
+            loss_all += loss_depth.item()
             loss_all += loss_dict['gaussian_loss']
 
         # with torch.autograd.detect_anomaly():

@@ -47,23 +47,22 @@ class PixelSplat(nn.Module):
         
         self.data_shim = get_data_shim(self.encoder)
 
-    def forward(self, batch_, global_step: int):
-        batch: BatchedExample = self.data_shim(batch_)
+    def forward(self, batch, global_step: int):
         _, _, _, h, w = batch["target"]["image"].shape
 
         # Run the model.
-        # for i in range(batch["context"]["image"].shape[1] - 1):
-        #     tmp_batch = self.batch_cut(batch["context"],i)
-        #     tmp_gaussians = self.encoder(tmp_batch, global_step, False)
-        #     if i == 0:
-        #         gaussians: Gaussians = tmp_gaussians
-        #     else:
-        #         gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
-        #         gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
-        #         gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
-        #         gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
+        for i in range(batch["context"]["image"].shape[1] - 1):
+            tmp_batch = self.batch_cut(batch["context"],i)
+            tmp_gaussians = self.encoder(tmp_batch, global_step, False)
+            if i == 0:
+                gaussians: Gaussians = tmp_gaussians
+            else:
+                gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
+                gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
+                gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
+                gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
             
-        gaussians = self.encoder(batch['context'], global_step, False)
+        # gaussians = self.encoder(batch['context'], global_step, False)
             
         output = self.decoder.forward(
             gaussians,

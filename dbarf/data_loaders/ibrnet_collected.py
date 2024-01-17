@@ -24,6 +24,8 @@ from .data_utils import get_nearby_view_ids, rectify_inplane_rotation, random_cr
 from .llff_data_utils import load_llff_data, batch_parse_llff_poses
 from ..pose_util import PoseInitializer
 
+import cv2
+from .base_utils import downsample_gaussian_blur
 
 class IBRNetCollectedDataset(Dataset):
     def __init__(self, args, mode, random_crop=True, **kwargs):
@@ -50,6 +52,10 @@ class IBRNetCollectedDataset(Dataset):
         self.node_id_to_idx_list = []
         self.train_view_graphs = []
 
+        image_size = 240
+        self.ratio = image_size / 504
+        self.h, self.w = int(self.ratio*378), int(image_size)
+        
         for i, scene in enumerate(all_scenes):
             if 'ibrnet_collected_2' in scene:
                 factor = 8
@@ -100,6 +106,9 @@ class IBRNetCollectedDataset(Dataset):
     def __getitem__(self, idx):
         rgb_file = self.render_rgb_files[idx]
         rgb = imageio.imread(rgb_file).astype(np.float32) / 255.
+        if self.w != 504:
+            rgb = cv2.resize(downsample_gaussian_blur(
+                rgb, self.ratio), (self.w, self.h), interpolation=cv2.INTER_LINEAR)
         render_pose = self.render_poses[idx]
         intrinsics = self.render_intrinsics[idx]
         depth_range = self.render_depth_range[idx]
@@ -159,6 +168,9 @@ class IBRNetCollectedDataset(Dataset):
         src_intrinsics, src_extrinsics = [], []
         for id in nearest_pose_ids:
             src_rgb = imageio.imread(train_rgb_files[id]).astype(np.float32) / 255.
+            if self.w != 504:
+                src_rgb = cv2.resize(downsample_gaussian_blur(
+                    src_rgb, self.ratio), (self.w, self.h), interpolation=cv2.INTER_LINEAR)
             train_pose = train_poses[id]
             train_intrinsics_ = train_intrinsics[id]
             src_extrinsics.append(train_pose)
@@ -182,6 +194,9 @@ class IBRNetCollectedDataset(Dataset):
         
         src_intrinsics = self.normalize_intrinsics(torch.from_numpy(src_intrinsics[:,:3,:3]).float(), img_size)
         intrinsics = self.normalize_intrinsics(torch.from_numpy(intrinsics[:3,:3]).unsqueeze(0).float(), img_size)
+        
+        intrinsics[:, :2, :2] *= self.ratio
+        src_intrinsics[:, :2, :2]=src_intrinsics[:,:2,:2]*self.ratio
         
         depth_range = torch.tensor([depth_range[0] * 0.9, depth_range[1] * 1.5])
 
