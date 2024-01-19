@@ -19,7 +19,7 @@ import torch
 from torch.utils.data import Dataset
 import sys
 sys.path.append('../')
-from .data_utils import get_nearby_view_ids, random_crop, random_flip, get_nearest_pose_ids
+from .data_utils import get_nearby_view_ids, loader_resize, random_crop, random_flip, get_nearest_pose_ids
 from .llff_data_utils import load_llff_data, batch_parse_llff_poses
 from ..pose_util import PoseInitializer
 
@@ -42,6 +42,8 @@ class LLFFDataset(Dataset):
         self.idx_to_node_id_list = []
         self.node_id_to_idx_list = []
         self.train_view_graphs = []
+
+        self.image_size = (176, 240)
 
         # print(f'num scenes: {len(scenes)}')
         all_scenes = os.listdir(base_dir)
@@ -71,13 +73,6 @@ class LLFFDataset(Dataset):
             self.train_poses.append(c2w_mats[i_train])
             self.train_rgb_files.append(np.array(rgb_files)[i_train].tolist())
             
-            pose_initializer = PoseInitializer(
-                data_path=scene_path,
-                image_ids=i_train,
-                load_external=True,
-                args=args
-            )
-            self.train_view_graphs.append(pose_initializer.view_graph)
 
             idx_to_node_id, node_id_to_idx = {}, {}
             for j in range(i_train.shape[0]):
@@ -109,7 +104,6 @@ class LLFFDataset(Dataset):
         train_rgb_files = self.train_rgb_files[train_set_id]
         train_poses = self.train_poses[train_set_id]
         train_intrinsics = self.train_intrinsics[train_set_id]
-        view_graph = self.train_view_graphs[train_set_id]
         idx_to_node_id = self.idx_to_node_id_list[train_set_id]
         node_id_to_idx = self.node_id_to_idx_list[train_set_id]
 
@@ -152,37 +146,83 @@ class LLFFDataset(Dataset):
 
         src_rgbs = []
         src_cameras = []
+        src_intrinsics, src_extrinsics = [], []
         for id in nearest_pose_ids:
             src_rgb = imageio.imread(train_rgb_files[id]).astype(np.float32) / 255.
             train_pose = train_poses[id]
             train_intrinsics_ = train_intrinsics[id]
+            
+            src_intrinsics.append(train_intrinsics_)
+            src_extrinsics.append(train_pose)
             src_rgbs.append(src_rgb)
             img_size = src_rgb.shape[:2]
             src_camera = np.concatenate((list(img_size), train_intrinsics_.flatten(),
-                                              train_pose.flatten())).astype(np.float32)
+                                         train_pose.flatten())).astype(np.float32)
             src_cameras.append(src_camera)
 
         src_rgbs = np.stack(src_rgbs, axis=0)
         src_cameras = np.stack(src_cameras, axis=0)
-        # if self.mode == 'train':
-        #     crop_h = np.random.randint(low=250, high=750)
-        #     crop_h = crop_h + 1 if crop_h % 2 == 1 else crop_h
-        #     crop_w = int(400 * 600 / crop_h)
-        #     crop_w = crop_w + 1 if crop_w % 2 == 1 else crop_w
-        #     rgb, camera, src_rgbs, src_cameras = random_crop(rgb, camera, src_rgbs, src_cameras,
-        #                                                      (crop_h, crop_w))
+        src_intrinsics, src_extrinsics = np.stack(src_intrinsics, axis=0), np.stack(src_extrinsics, axis=0)
 
-        # if self.mode == 'train' and np.random.choice([0, 1]):
-        #     rgb, camera, src_rgbs, src_cameras = random_flip(rgb, camera, src_rgbs, src_cameras)
+        rgb, camera, src_rgbs, src_cameras, intrinsics, src_intrinsics = loader_resize(rgb,camera,src_rgbs,src_cameras, size=self.image_size)
+        
+        src_extrinsics = torch.from_numpy(src_extrinsics).float()
+        extrinsics = torch.from_numpy(render_pose).unsqueeze(0).float()
+        
+        src_intrinsics = self.normalize_intrinsics(torch.from_numpy(src_intrinsics[:,:3,:3]).float(), self.image_size)
+        intrinsics = self.normalize_intrinsics(torch.from_numpy(intrinsics[:3,:3]).unsqueeze(0).float(), self.image_size)
 
-        depth_range = torch.tensor([depth_range[0] * 0.9, depth_range[1] * 1.6])
+        # intrinsics[:, :2, :2] *= self.ratio
+        # src_intrinsics[:, :2, :2]=src_intrinsics[:,:2,:2]*self.ratio
+        
+        depth_range = torch.tensor([depth_range[0] * 0.9, depth_range[1] * 1.6], dtype=torch.float32)
 
+        # Resize the world to make the baseline 1.
+        if src_extrinsics.shape[0] == 2:
+            a, b = src_extrinsics[:, :3, 3]
+            scale = (a - b).norm()
+            if scale < 0.001:
+                print(
+                    f"Skipped {scene} because of insufficient baseline "
+                    f"{scale:.6f}"
+                )
+            src_extrinsics[:, :3, 3] /= scale
+            extrinsics[:, :3, 3] /= scale
+        else:
+            scale = 1
+
+        
         return {'rgb': torch.from_numpy(rgb[..., :3]),
                 'camera': torch.from_numpy(camera),
                 'rgb_path': rgb_file,
                 'src_rgbs': torch.from_numpy(src_rgbs[..., :3]),
                 'src_cameras': torch.from_numpy(src_cameras),
                 'depth_range': depth_range,
-                'scaled_shape': (378, 504)
+                'idx': idx,
+                'scaled_shape': (0, 0), # (378, 504)
+                "context": {
+                        "extrinsics": src_extrinsics,
+                        "intrinsics": src_intrinsics,
+                        "image": torch.from_numpy(src_rgbs[..., :3]).permute(0, 3, 1, 2),
+                        "near":  depth_range[0].repeat(num_select) / scale,
+                        "far": depth_range[1].repeat(num_select) / scale,
+                        "index": torch.from_numpy(nearest_pose_ids),
+                },
+                "target": {
+                        "extrinsics": extrinsics,
+                        "intrinsics": intrinsics,
+                        "image": torch.from_numpy(rgb[..., :3]).unsqueeze(0).permute(0, 3, 1, 2),
+                        "near": depth_range[0].unsqueeze(0) / scale,
+                        "far": depth_range[1].unsqueeze(0) / scale,
+                        "index": torch.tensor([train_set_id]),
+                },
                 }
-
+    def normalize_intrinsics(self, intrinsics, img_size):
+        h, w = img_size
+        # 归一化内参矩阵
+        intrinsics_normalized = intrinsics.clone()
+        intrinsics_normalized[:, 0, 0] /= w
+        intrinsics_normalized[:, 1, 1] /= h
+        intrinsics_normalized[:, 0, 2] = 0.5
+        intrinsics_normalized[:, 1, 2] = 0.5
+        return intrinsics_normalized

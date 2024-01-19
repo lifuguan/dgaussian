@@ -91,7 +91,8 @@ def eval(cfg_dict: DictConfig):
     encoder, encoder_visualizer = get_encoder(args.pixelsplat.encoder)
     decoder = get_decoder(args.pixelsplat.decoder)
     gaussian_model = PixelSplat(encoder, decoder, encoder_visualizer)
-    gaussian_model.load_state_dict(torch.load(args.ckpt_path)['state_dict'])
+    gaussian_model.load_state_dict(torch.load(args.ckpt_path)['gaussian'])
+    # gaussian_model.load_state_dict(torch.load(args.ckpt_path)['state_dict'])
     gaussian_model.cuda()
     
     eval_dataset_name = args.eval_dataset

@@ -24,7 +24,7 @@ from .data_utils import get_nearby_view_ids, loader_resize, random_crop, get_nea
 from .llff_data_utils import load_llff_data, batch_parse_llff_poses
 from ..pose_util import PoseInitializer
 
-import cv2
+import random
 from .base_utils import downsample_gaussian_blur
 
 class LLFFTestDataset(Dataset):
@@ -50,7 +50,7 @@ class LLFFTestDataset(Dataset):
         self.node_id_to_idx_list = []
         self.train_view_graphs = []
     
-        self.image_size = (178, 240)
+        self.image_size = (176, 240)
         out_w = 240
         self.ratio = out_w / 504
         self.h, self.w = int(self.ratio*378), int(out_w)
@@ -122,9 +122,6 @@ class LLFFTestDataset(Dataset):
         idx = idx % len(self.render_rgb_files)
         rgb_file = self.render_rgb_files[idx]
         rgb = imageio.imread(rgb_file).astype(np.float32) / 255.
-        # if self.w != 504:
-        #     rgb = cv2.resize(downsample_gaussian_blur(
-        #         rgb, self.ratio), (self.w, self.h), interpolation=cv2.INTER_LINEAR)
         render_pose = self.render_poses[idx]
         intrinsics = self.render_intrinsics[idx]
         depth_range = self.render_depth_range[idx]
@@ -189,9 +186,6 @@ class LLFFTestDataset(Dataset):
         src_intrinsics, src_extrinsics = [], []
         for id in nearest_pose_ids:
             src_rgb = imageio.imread(train_rgb_files[id]).astype(np.float32) / 255.
-            # if self.w != 504:
-            #     src_rgb = cv2.resize(downsample_gaussian_blur(
-            #         src_rgb, self.ratio), (self.w, self.h), interpolation=cv2.INTER_LINEAR)
             train_pose = train_poses[id]
             train_intrinsics_ = train_intrinsics[id]
             
@@ -206,14 +200,16 @@ class LLFFTestDataset(Dataset):
         src_rgbs = np.stack(src_rgbs, axis=0)
         src_cameras = np.stack(src_cameras, axis=0)
         src_intrinsics, src_extrinsics = np.stack(src_intrinsics, axis=0), np.stack(src_extrinsics, axis=0)
-        # rgb, camera, src_rgbs, src_cameras, intrinsics, src_intrinsics = random_crop(rgb,camera,src_rgbs,src_cameras, size=(178, 240), center=None)
-        rgb, camera, src_rgbs, src_cameras, intrinsics, src_intrinsics = loader_resize(rgb,camera,src_rgbs,src_cameras, size=(180, 240))
+        if self.mode == 'train' and random.randint(1, 100) < 25:
+            rgb, camera, src_rgbs, src_cameras, intrinsics, src_intrinsics = random_crop(rgb,camera,src_rgbs,src_cameras, size=self.image_size, center=None)
+        elif self.mode == 'train' or self.mode == 'validation' or self.mode == 'test':
+            rgb, camera, src_rgbs, src_cameras, intrinsics, src_intrinsics = loader_resize(rgb,camera,src_rgbs,src_cameras, size=self.image_size)
         
         src_extrinsics = torch.from_numpy(src_extrinsics).float()
         extrinsics = torch.from_numpy(render_pose).unsqueeze(0).float()
         
-        src_intrinsics = self.normalize_intrinsics(torch.from_numpy(src_intrinsics[:,:3,:3]).float(), (180, 240))
-        intrinsics = self.normalize_intrinsics(torch.from_numpy(intrinsics[:3,:3]).unsqueeze(0).float(), (180, 240))
+        src_intrinsics = self.normalize_intrinsics(torch.from_numpy(src_intrinsics[:,:3,:3]).float(), self.image_size)
+        intrinsics = self.normalize_intrinsics(torch.from_numpy(intrinsics[:3,:3]).unsqueeze(0).float(), self.image_size)
 
         # intrinsics[:, :2, :2] *= self.ratio
         # src_intrinsics[:, :2, :2]=src_intrinsics[:,:2,:2]*self.ratio

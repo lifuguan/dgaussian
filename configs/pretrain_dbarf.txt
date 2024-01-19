@@ -9,7 +9,7 @@ enable_visdom = False
 # ckpt_path = 
 
 ## dataset
-train_dataset = ibrnet_collected
+train_dataset = llff+ibrnet_collected
 dataset_weights = [0.5, 0.5]
 eval_dataset = llff_test
 eval_scenes = [trex, fern, flower, leaves, room, fortress, horns, orchids]

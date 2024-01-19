@@ -4,7 +4,7 @@ defaults:
   - pixelsplat/decoder: splatting_cuda
 
 ### INPUT
-expname : pretraining_dgaussian_nodepth
+expname : finetune_dgaussian_stable_room
 rootdir : data/ibrnet/train
 render_stride : 2
 distributed : False
@@ -17,13 +17,12 @@ local_rank : 0
 ## dataset
 train_dataset : llff_test
 train_scenes : [room]
-dataset_weights : [0.5, 0.5]
+dataset_weights : [1]
 eval_dataset : llff_test
 eval_scenes : [room]
 # eval_scenes : [trex, fern, flower, leaves, room, fortress, horns, orchids]
-# eval_scenes : [room]
 
-num_source_views : 5
+num_source_views : 8
 workers : 8
 
 selection_rule : pose
@@ -32,11 +31,11 @@ outlier_ratio : 0.2
 noise_level : 0.15
 testskip : 8
 
-no_load_opt: True
-no_load_scheduler: True
+no_load_opt: False
+no_load_scheduler: False
 
 ### TRAINING
-n_iters: 25000
+n_iters: 20000
 N_rand : 500
 lrate_feature : 0.001
 lrate_mlp : 0.0005
@@ -68,9 +67,9 @@ center_ratio : 0.8
 feat_loss_scale : 1e1
 
 ### CONSOLE AND TENSORBOARD
-n_validation : 100
-n_tensorboard : 10
-n_checkpoint : 100
+n_validation : 500
+n_tensorboard : 50
+n_checkpoint : 5000
 visdom_port : 9000
 
 ### evaluation options

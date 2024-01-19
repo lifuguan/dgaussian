@@ -73,8 +73,12 @@ class DGaussianTrainer(BaseTrainer):
         # |--> (3) Jointly train the pose optimizer and ibrnet.           |
         # |             (10000 iterations)                                |
         # |-------------------------->------------------------------------|
-        if self.iteration == 0:
+        if self.iteration % 10000 == 0 and (self.iteration // 10000) % 2 == 0:
+            self.state = self.model.switch_state_machine(state='pose_only')
+        elif self.iteration % 10000 == 0 and (self.iteration // 10000) % 2 == 1:
             self.state = self.model.switch_state_machine(state='nerf_only')
+        if self.iteration != 0 and self.iteration % 30000 == 0:
+            self.state = self.model.switch_state_machine(state='joint')
 
         min_depth, max_depth = data_batch['depth_range'][0][0], data_batch['depth_range'][0][1]
 
@@ -123,7 +127,7 @@ class DGaussianTrainer(BaseTrainer):
             rendered_depth = ret['depth'][0].permute(1, 2, 0).reshape(-1, 1)
             loss_depth = self_sup_depth_loss(inv_depth_prior, rendered_depth, min_depth, max_depth)
             loss_dict['self-sup-depth'] = loss_depth
-            loss_all += loss_dict['self-sup-depth'] * 0.04
+            loss_all += loss_dict['self-sup-depth'] * 0.2
 
         # with torch.autograd.detect_anomaly():
         loss_all.backward()
@@ -289,7 +293,7 @@ def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='',
 @hydra.main(
     version_base=None,
     config_path="./configs",
-    config_name="pretrain_dgaussian",
+    config_name="pretrain_dgaussian_stable",
 )
 
 def train(cfg_dict: DictConfig):

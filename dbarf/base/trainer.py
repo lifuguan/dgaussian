@@ -205,8 +205,8 @@ class BaseTrainer(object):
 
                 if self.config.local_rank == 0:
                     # Main validation logic.
-                    if self.iteration % self.config.n_validation == 0:
-                        score = self.validate()
+                    # if self.iteration % self.config.n_validation == 0:
+                    #     score = self.validate()
                     
                     # log to tensorboard.
                     if self.iteration % self.config.n_tensorboard == 0:
