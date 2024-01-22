@@ -73,11 +73,13 @@ class DGaussianTrainer(BaseTrainer):
         # |--> (3) Jointly train the pose optimizer and ibrnet.           |
         # |             (10000 iterations)                                |
         # |-------------------------->------------------------------------|
-        if self.iteration % 5000 == 0 and (self.iteration // 5000) % 2 == 0:
-            self.state = self.model.switch_state_machine(state='pose_only')
-        elif self.iteration % 5000 == 0 and (self.iteration // 5000) % 2 == 1:
-            self.state = self.model.switch_state_machine(state='nerf_only')
-        if self.iteration != 0 and self.iteration % 10000 == 0:
+        # if self.iteration % 5000 == 0 and (self.iteration // 5000) % 2 == 0:
+        #     self.state = self.model.switch_state_machine(state='pose_only')
+        # elif self.iteration % 5000 == 0 and (self.iteration // 5000) % 2 == 1:
+        #     self.state = self.model.switch_state_machine(state='nerf_only')
+        # if self.iteration != 0 and self.iteration % 10000 == 0:
+        #     self.state = self.model.switch_state_machine(state='joint')
+        if self.iteration == 0:
             self.state = self.model.switch_state_machine(state='joint')
 
         min_depth, max_depth = data_batch['depth_range'][0][0], data_batch['depth_range'][0][1]
@@ -104,7 +106,7 @@ class DGaussianTrainer(BaseTrainer):
             num_views = data_batch['src_cameras'].shape[1]
             target_pose = data_batch['camera'][0,-16:].reshape(-1, 4, 4).repeat(num_views, 1, 1).to(self.device)
             context_poses = self.projector.get_train_poses(target_pose, pred_rel_poses[:, -1, :])
-            data_batch['context']['extrinsics'] = context_poses.unsqueeze(0)
+            data_batch['context']['extrinsics'] = context_poses.unsqueeze(0).detach()
         
         batch_ = data_shim(data_batch, device=self.device)
         batch = self.model.gaussian_model.data_shim(batch_)

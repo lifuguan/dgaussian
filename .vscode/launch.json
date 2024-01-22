@@ -55,18 +55,18 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_VISIBLE_DEVICES": "6",
                 "PYTHONPATH":"${workspaceFolder}"
             },
-            "name": "train:dgaussian-room",
+            "name": "finetune:dgaussian-room",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/train_dgaussian.py",
+            "program": "${workspaceFolder}/finetune_dgaussian_stable.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dgaussian_resnet.pth",
-                     "++eval_scenes=[room]","++train_scenes=[room]","++num_source_views=8",
-                     "++expname=dgaussian_no_depth_room", "++use_depth_loss=False"]
+                     "++eval_scenes=[room]","++train_scenes=[room]", "++num_source_views=8",
+                     "++expname=test", "++use_depth_loss=False" , "++use_pred_pose=True"]
         },
         {
             "env": {
