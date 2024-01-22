@@ -125,6 +125,7 @@ def eval(cfg_dict: DictConfig):
     running_mean_fine_ssim = 0
 
     lpips_loss = lpips.LPIPS(net="alex").cuda()
+    projector = Projector(device="cuda:0")
 
     for i, data in enumerate(test_loader):
         rgb_path = data['rgb_path'][0]
@@ -158,8 +159,13 @@ def eval(cfg_dict: DictConfig):
             pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
             pred_depth = inv2depth(pred_inv_depth)
             
-            batch = data_shim(data, "cuda:0")
-            batch = gaussian_model.data_shim(batch)
+            # if True:
+            #     num_views = data['src_cameras'].shape[1]
+            #     target_pose = data['camera'][0,-16:].reshape(-1, 4, 4).repeat(num_views, 1, 1).to("cuda:0")
+            #     context_poses = projector.get_train_poses(target_pose, pred_rel_poses)
+            #     data['context']['extrinsics'] = context_poses.unsqueeze(0)
+            batch_ = data_shim(data, device="cuda:0")
+            batch = gaussian_model.data_shim(batch_)       
             output, gt_rgb = gaussian_model(batch, i)
             
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth.png'),

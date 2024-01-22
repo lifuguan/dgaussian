@@ -32,6 +32,7 @@ class DGaussianTrainer(BaseTrainer):
         super().__init__(config)
         
         self.state = 'pose_only'
+        self.projector = Projector(device=self.device)
 
     def build_networks(self):
         self.model = DGaussianModel(self.config,
@@ -74,12 +75,9 @@ class DGaussianTrainer(BaseTrainer):
         # |             (10000 iterations)                                |
         # |-------------------------->------------------------------------|
         if self.iteration == 0:
-            self.state = self.model.switch_state_machine(state='nerf_only')
+            self.state = self.model.switch_state_machine(state='joint')
 
         min_depth, max_depth = data_batch['depth_range'][0][0], data_batch['depth_range'][0][1]
-
-        batch_ = data_shim(data_batch, device=self.device)
-        batch = self.model.gaussian_model.data_shim(batch_)
         
         # Start of core optimization loop
         pred_inv_depths, pred_rel_poses, sfm_loss, fmap = self.model.correct_poses(
@@ -97,16 +95,30 @@ class DGaussianTrainer(BaseTrainer):
         inv_depth_prior = pred_inv_depths[-1].detach().clone()
         inv_depth_prior = inv_depth_prior.reshape(-1, 1)
         
+        if self.config.use_pred_pose is True:
+            num_views = data_batch['src_cameras'].shape[1]
+            target_pose = data_batch['camera'][0,-16:].reshape(-1, 4, 4).repeat(num_views, 1, 1).to(self.device)
+            context_poses = self.projector.get_train_poses(target_pose, pred_rel_poses[:, -1, :])
+            data_batch['context']['extrinsics'] = context_poses.unsqueeze(0).detach()
+        
+        batch_ = data_shim(data_batch, device=self.device)
+        batch = self.model.gaussian_model.data_shim(batch_)
         ret, data_gt = self.model.gaussian_model(batch, self.iteration)
 
         loss_all = 0
         loss_dict = {}
 
-
-
         # compute loss
         self.optimizer.zero_grad()
         self.pose_optimizer.zero_grad()
+
+        coarse_loss = self.rgb_loss(ret, data_gt)
+        loss_dict['gaussian_loss'] = coarse_loss
+
+        if self.config.use_depth_loss is True:
+            rendered_depth = ret['depth'][0].permute(1, 2, 0).reshape(-1, 1)
+            loss_depth = self_sup_depth_loss(1 / inv_depth_prior, rendered_depth, min_depth, max_depth)
+            loss_dict['self-sup-depth'] = loss_depth
 
         if self.state == 'pose_only' or self.state == 'joint':
             loss_dict['sfm_loss'] = sfm_loss['loss']
@@ -114,16 +126,17 @@ class DGaussianTrainer(BaseTrainer):
             if 'smoothness_loss' in sfm_loss['metrics']:
                 self.scalars_to_log['loss/smoothness_loss'] = sfm_loss['metrics']['smoothness_loss']
 
-        coarse_loss = self.rgb_loss(ret, data_gt)
-        loss_dict['gaussian_loss'] = coarse_loss
-        loss_all += loss_dict['gaussian_loss']
-
-            
-        if self.config.use_depth_loss is True:
-            rendered_depth = ret['depth'][0].permute(1, 2, 0).reshape(-1, 1)
-            loss_depth = self_sup_depth_loss(inv_depth_prior, rendered_depth, min_depth, max_depth)
-            loss_dict['self-sup-depth'] = loss_depth
-            loss_all += loss_dict['self-sup-depth'] * 0.04
+        if self.state == 'joint':
+            if self.config.use_depth_loss is True:
+                loss_all += loss_dict['self-sup-depth'].item() * 0.04
+            loss_all += self.model.compose_joint_loss(
+                loss_dict['sfm_loss'], loss_dict['gaussian_loss'], self.iteration)
+        elif self.state == 'pose_only':
+            loss_all += loss_dict['sfm_loss']
+        else: # nerf_only
+            loss_all += loss_dict['gaussian_loss']
+            if self.config.use_depth_loss is True:
+                loss_all += loss_dict['self-sup-depth'].item() * 0.04
 
         # with torch.autograd.detect_anomaly():
         loss_all.backward()

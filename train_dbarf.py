@@ -64,12 +64,14 @@ class DBARFTrainer(IBRNetTrainer):
         # |--> (3) Jointly train the pose optimizer and ibrnet.           |
         # |             (10000 iterations)                                |
         # |-------------------------->------------------------------------|
-        if self.iteration % 10000 == 0 and (self.iteration // 10000) % 2 == 0:
-            self.state = self.model.switch_state_machine(state='pose_only')
-        elif self.iteration % 10000 == 0 and (self.iteration // 10000) % 2 == 1:
-            self.state = self.model.switch_state_machine(state='nerf_only')
-        if self.iteration != 0 and self.iteration % 30000 == 0:
+        if self.iteration == 0:
             self.state = self.model.switch_state_machine(state='joint')
+        # if self.iteration % 10000 == 0 and (self.iteration // 10000) % 2 == 0:
+        #     self.state = self.model.switch_state_machine(state='pose_only')
+        # elif self.iteration % 10000 == 0 and (self.iteration // 10000) % 2 == 1:
+        #     self.state = self.model.switch_state_machine(state='nerf_only')
+        # if self.iteration != 0 and self.iteration % 30000 == 0:
+        #     self.state = self.model.switch_state_machine(state='joint')
 
         images = torch.cat([data_batch['rgb'], data_batch['src_rgbs'].squeeze(0)], dim=0).cuda().permute(0, 3, 1, 2)
         all_feat_maps = self.model.feature_net(images)

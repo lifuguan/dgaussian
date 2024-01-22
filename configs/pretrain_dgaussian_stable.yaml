@@ -4,7 +4,7 @@ defaults:
   - pixelsplat/decoder: splatting_cuda
 
 ### INPUT
-expname : pretraining_dgaussian_stable
+expname : pretrain_dgaussian_room_depth_pose
 rootdir : data/ibrnet/train
 render_stride : 2
 distributed : False
@@ -13,6 +13,7 @@ enable_visdom : False
 seed : 3407
 pretrained : False
 local_rank : 0
+ckpt_path : model_zoo/dgaussian_resnet.pth
 
 ## dataset
 train_dataset : llff+ibrnet_collected
@@ -35,7 +36,7 @@ no_load_opt: True
 no_load_scheduler: True
 
 ### TRAINING
-n_iters: 30000
+n_iters: 50000
 N_rand : 500
 lrate_feature : 0.001
 lrate_mlp : 0.0005
@@ -49,7 +50,8 @@ coarse_feat_dim : 64 # original:32
 fine_feat_dim : 32 # original:128
 anti_alias_pooling : 1
 
-use_depth_loss: False
+use_pred_pose: True
+use_depth_loss: True
 
 optimizer:
   lr: 1.5e-4

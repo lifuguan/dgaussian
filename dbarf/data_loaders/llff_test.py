@@ -51,6 +51,7 @@ class LLFFTestDataset(Dataset):
         self.train_view_graphs = []
     
         self.image_size = (176, 240)
+        # self.image_size = (378, 504)
         out_w = 240
         self.ratio = out_w / 504
         self.h, self.w = int(self.ratio*378), int(out_w)
@@ -199,17 +200,16 @@ class LLFFTestDataset(Dataset):
 
         src_rgbs = np.stack(src_rgbs, axis=0)
         src_cameras = np.stack(src_cameras, axis=0)
+
         src_intrinsics, src_extrinsics = np.stack(src_intrinsics, axis=0), np.stack(src_extrinsics, axis=0)
-        if self.mode == 'train' and random.randint(1, 100) < 25:
-            rgb, camera, src_rgbs, src_cameras, intrinsics, src_intrinsics = random_crop(rgb,camera,src_rgbs,src_cameras, size=self.image_size, center=None)
-        elif self.mode == 'train' or self.mode == 'validation' or self.mode == 'test':
-            rgb, camera, src_rgbs, src_cameras, intrinsics, src_intrinsics = loader_resize(rgb,camera,src_rgbs,src_cameras, size=self.image_size)
+    
+        pix_rgb, pix_camera, pix_src_rgbs, pix_src_cameras, pix_intrinsics, pix_src_intrinsics = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
         
-        src_extrinsics = torch.from_numpy(src_extrinsics).float()
-        extrinsics = torch.from_numpy(render_pose).unsqueeze(0).float()
+        pix_src_extrinsics = torch.from_numpy(src_extrinsics).float()
+        pix_extrinsics = torch.from_numpy(render_pose).unsqueeze(0).float()
         
-        src_intrinsics = self.normalize_intrinsics(torch.from_numpy(src_intrinsics[:,:3,:3]).float(), self.image_size)
-        intrinsics = self.normalize_intrinsics(torch.from_numpy(intrinsics[:3,:3]).unsqueeze(0).float(), self.image_size)
+        pix_src_intrinsics = self.normalize_intrinsics(torch.from_numpy(pix_src_intrinsics[:,:3,:3]).float(), self.image_size)
+        pix_intrinsics = self.normalize_intrinsics(torch.from_numpy(pix_intrinsics[:3,:3]).unsqueeze(0).float(), self.image_size)
 
         # intrinsics[:, :2, :2] *= self.ratio
         # src_intrinsics[:, :2, :2]=src_intrinsics[:,:2,:2]*self.ratio
@@ -217,16 +217,16 @@ class LLFFTestDataset(Dataset):
         depth_range = torch.tensor([depth_range[0] * 0.9, depth_range[1] * 1.6], dtype=torch.float32)
 
         # Resize the world to make the baseline 1.
-        if src_extrinsics.shape[0] == 2:
-            a, b = src_extrinsics[:, :3, 3]
+        if pix_src_extrinsics.shape[0] == 2:
+            a, b = pix_src_extrinsics[:, :3, 3]
             scale = (a - b).norm()
             if scale < 0.001:
                 print(
                     f"Skipped {scene} because of insufficient baseline "
                     f"{scale:.6f}"
                 )
-            src_extrinsics[:, :3, 3] /= scale
-            extrinsics[:, :3, 3] /= scale
+            pix_src_extrinsics[:, :3, 3] /= scale
+            pix_extrinsics[:, :3, 3] /= scale
         else:
             scale = 1
 
@@ -240,17 +240,17 @@ class LLFFTestDataset(Dataset):
                 'idx': idx,
                 'scaled_shape': (0, 0), # (378, 504)
                 "context": {
-                        "extrinsics": src_extrinsics,
-                        "intrinsics": src_intrinsics,
-                        "image": torch.from_numpy(src_rgbs[..., :3]).permute(0, 3, 1, 2),
+                        "extrinsics": pix_src_extrinsics,
+                        "intrinsics": pix_src_intrinsics,
+                        "image": torch.from_numpy(pix_src_rgbs[..., :3]).permute(0, 3, 1, 2),
                         "near":  depth_range[0].repeat(num_select) / scale,
                         "far": depth_range[1].repeat(num_select) / scale,
                         "index": torch.from_numpy(nearest_pose_ids),
                 },
                 "target": {
-                        "extrinsics": extrinsics,
-                        "intrinsics": intrinsics,
-                        "image": torch.from_numpy(rgb[..., :3]).unsqueeze(0).permute(0, 3, 1, 2),
+                        "extrinsics": pix_extrinsics,
+                        "intrinsics": pix_intrinsics,
+                        "image": torch.from_numpy(pix_rgb[..., :3]).unsqueeze(0).permute(0, 3, 1, 2),
                         "near": depth_range[0].unsqueeze(0) / scale,
                         "far": depth_range[1].unsqueeze(0) / scale,
                         "index": torch.tensor([train_set_id]),

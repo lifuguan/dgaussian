@@ -133,7 +133,7 @@ def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
     intrinsics = camera[2:18].reshape(4, 4)
     src_intrinsics = src_cameras[:, 2:18].reshape(-1, 4, 4)
     if out_w >= w or out_h >= h:
-        return rgb, camera, src_rgbs, src_cameras
+        return rgb, camera, src_rgbs, src_cameras, intrinsics[..., :3, :3], src_intrinsics[..., :3, :3]
 
     ratio_y = out_h / h
     ratio_x = out_w / w
@@ -141,7 +141,11 @@ def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
     src_intrinsics[:, :1, :1] *= ratio_y
     intrinsics[1:2, 1:2] *= ratio_x
     src_intrinsics[:, 1:2, 1:2] *= ratio_x
+    camera[0] = out_h
+    camera[1] = out_w
     camera[2:18] = intrinsics.flatten()
+    src_cameras[:, 0] = out_h
+    src_cameras[:, 1] = out_w
     src_cameras[:, 2:18] = src_intrinsics.reshape(-1, 16)
     rgb = cv2.resize(downsample_gaussian_blur(
                 rgb, ratio_y), (out_w, out_h), interpolation=cv2.INTER_LINEAR)

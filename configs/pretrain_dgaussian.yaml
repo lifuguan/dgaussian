@@ -16,7 +16,7 @@ local_rank : 0
 
 ## dataset
 train_dataset : llff_test
-train_scenes : [room]
+train_scenes : []
 dataset_weights : [0.5, 0.5]
 eval_dataset : llff_test
 eval_scenes : [room]
@@ -50,7 +50,8 @@ coarse_feat_dim : 64 # original:32
 fine_feat_dim : 32 # original:128
 anti_alias_pooling : 1
 
-use_depth_loss: False
+use_pred_pose: True
+use_depth_loss: True
 
 optimizer:
   lr: 1.5e-4
@@ -70,7 +71,7 @@ feat_loss_scale : 1e1
 ### CONSOLE AND TENSORBOARD
 n_validation : 100
 n_tensorboard : 10
-n_checkpoint : 100
+n_checkpoint : 1000
 visdom_port : 9000
 
 ### evaluation options
