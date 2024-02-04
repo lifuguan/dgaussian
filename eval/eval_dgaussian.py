@@ -127,37 +127,31 @@ def eval(cfg_dict: DictConfig):
     lpips_loss = lpips.LPIPS(net="alex").cuda()
     projector = Projector(device="cuda:0")
 
+    video_rgb_pred = []
     for i, data in enumerate(test_loader):
         rgb_path = data['rgb_path'][0]
         file_id = os.path.basename(rgb_path).split('.')[0]
         src_rgbs = data['src_rgbs'][0].cpu().numpy()
 
         averaged_img = (np.mean(src_rgbs, axis=0) * 255.).astype(np.uint8)
-        imageio.imwrite(os.path.join(out_scene_dir, '{}_average.png'.format(file_id)),
-                        averaged_img)
 
         model.switch_to_eval()
         with torch.no_grad():
-            ray_sampler = RaySamplerSingleImage(data, device='cuda:0')
-            ray_batch = ray_sampler.get_all()
 
             images = torch.cat([data['rgb'], data['src_rgbs'].squeeze(0)], dim=0).cuda().permute(0, 3, 1, 2)
-            all_feat_maps = model.feature_net(images)
-            
-            feat_maps = (all_feat_maps[0][1:, :32, ...], None) if args.coarse_only else \
-                        (all_feat_maps[0][1:, :32, ...], all_feat_maps[1][1:, ...])
 
-            pred_inv_depth, pred_rel_poses, _, _ = model.correct_poses(
-                fmaps=None,
-                target_image=data['rgb'].cuda(),
-                ref_imgs=data['src_rgbs'].cuda(),
-                target_camera=data['camera'],
-                ref_cameras=data['src_cameras'],
-                min_depth=data['depth_range'][0][0],
-                max_depth=data['depth_range'][0][1],
-                scaled_shape=data['scaled_shape'])
-            pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
-            pred_depth = inv2depth(pred_inv_depth)
+            if args.render_video is not True:
+                pred_inv_depth, pred_rel_poses, _, _ = model.correct_poses(
+                    fmaps=None,
+                    target_image=data['rgb'].cuda(),
+                    ref_imgs=data['src_rgbs'].cuda(),
+                    target_camera=data['camera'],
+                    ref_cameras=data['src_cameras'],
+                    min_depth=data['depth_range'][0][0],
+                    max_depth=data['depth_range'][0][1],
+                    scaled_shape=data['scaled_shape'])
+                pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
+                pred_depth = inv2depth(pred_inv_depth)
             
             # if True:
             #     num_views = data['src_cameras'].shape[1]
@@ -167,28 +161,29 @@ def eval(cfg_dict: DictConfig):
             batch_ = data_shim(data, device="cuda:0")
             batch = gaussian_model.data_shim(batch_)       
             output, gt_rgb = gaussian_model(batch, i)
-            
-            imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth.png'),
-                            (pred_depth.numpy() * 255.).astype(np.uint8))
-            pred_depth = colorize(pred_depth, cmap_name='jet', append_cbar=True)
-            imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_color_depth.png'),
-                            (pred_depth.numpy() * 255.).astype(np.uint8))
+                        
 
             gt_rgb = gt_rgb['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
             coarse_pred_rgb = output['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
             coarse_err_map = torch.sum((coarse_pred_rgb - gt_rgb) ** 2, dim=-1).numpy()
             coarse_err_map_colored = (colorize_np(coarse_err_map, range=(0., 1.)) * 255).astype(np.uint8)
 
-            imageio.imwrite(os.path.join(out_scene_dir, '{}_err_map_coarse.png'.format(file_id)),
-                            coarse_err_map_colored)
             coarse_pred_rgb_np = torch.from_numpy(np.clip(coarse_pred_rgb.numpy()[None, ...], a_min=0., a_max=1.)).cuda()
             gt_rgb_np = torch.from_numpy(gt_rgb.numpy()[None, ...]).cuda()
 
+            coarse_psnr = img2psnr(gt_rgb_np, coarse_pred_rgb_np)
             coarse_lpips = img2lpips(lpips_loss, gt_rgb_np.permute(0, 3, 1, 2), coarse_pred_rgb_np.permute(0, 3, 1, 2))
             coarse_ssim = img2ssim(gt_rgb_np.permute(0, 3, 1, 2), coarse_pred_rgb_np.permute(0, 3, 1, 2))
-            coarse_psnr = img2psnr(gt_rgb_np, coarse_pred_rgb_np)
 
+            if args.render_video is True:
+                print("==================\n"
+                  f"{scene_name}, curr_id: {file_id} PSNR : {coarse_psnr}")
+                video_rgb_pred.append(coarse_pred_rgb)
+                continue
+                
             # saving outputs ...
+            imageio.imwrite(os.path.join(out_scene_dir, '{}_average.png'.format(file_id)),averaged_img)
+            
             coarse_pred_rgb = (255 * np.clip(coarse_pred_rgb.numpy(), a_min=0, a_max=1.)).astype(np.uint8)
             imageio.imwrite(os.path.join(out_scene_dir, '{}_pred_coarse.png'.format(file_id)), coarse_pred_rgb)
 
@@ -203,7 +198,15 @@ def eval(cfg_dict: DictConfig):
             imageio.imwrite(os.path.join(out_scene_dir, '{}_depth_vis_coarse.png'.format(file_id)),
                             (255 * coarse_pred_depth_colored).astype(np.uint8))
 
+            imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth.png'),
+                            (pred_depth.numpy() * 255.).astype(np.uint8))
+            pred_depth = colorize(pred_depth, cmap_name='jet', append_cbar=True)
+            imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_color_depth.png'),
+                            (pred_depth.numpy() * 255.).astype(np.uint8))
 
+            imageio.imwrite(os.path.join(out_scene_dir, '{}_err_map_coarse.png'.format(file_id)),
+                            coarse_err_map_colored)
+            
             sum_coarse_psnr += coarse_psnr
             running_mean_coarse_psnr = sum_coarse_psnr / (i + 1)
             sum_coarse_lpips += coarse_lpips
@@ -245,7 +248,10 @@ def eval(cfg_dict: DictConfig):
                                                  'coarse_lpips': coarse_lpips,
                                                  'fine_lpips': fine_lpips,
                                                  }
-
+    if args.render_video is True:
+        imageio.mimwrite(os.path.join(out_scene_dir, 'video_rgb_pred.mp4'), video_rgb_pred, fps=10, quality=8)
+    
+    
     mean_coarse_psnr = sum_coarse_psnr / total_num
     mean_fine_psnr = sum_fine_psnr / total_num
     mean_coarse_lpips = sum_coarse_lpips / total_num

@@ -24,6 +24,7 @@ from .realestate import *
 from .spaces_dataset import *
 from .nerf_synthetic import *
 from .scannet import *
+from .waymo import *
 
 dataset_dict = {
     'spaces': SpacesFreeDataset,
@@ -34,5 +35,6 @@ dataset_dict = {
     'llff': LLFFDataset,
     'ibrnet_collected': IBRNetCollectedDataset,
     'scannet': ScannetDataset,
-    'llff_test': LLFFTestDataset
+    'llff_test': LLFFTestDataset,
+    'waymo': WaymoStaticDataset,
 }

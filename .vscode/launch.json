@@ -15,19 +15,19 @@
             "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth", "--expname", "test"]
         },
         {
-            "env": {"CUDA_VISIBLE_DEVICES": "4",},
+            "env": {"CUDA_VISIBLE_DEVICES": "5",},
             "name": "test:dbarf",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/eval/eval_dbarf.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "data/ibrnet/train/out/pretrain_dbarf_504/model/model_005000.pth" , "--eval_scenes", "room"]
+            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "data/ibrnet/train/out/pretrain_dbarf_504/model/model_015000.pth" , "--eval_scenes", "room"]
             // "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "room"]
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "6",
+                "CUDA_VISIBLE_DEVICES": "5",
                 "PYTHONPATH":"${workspaceFolder}"
             },
             "name": "test:dgaussian-2",
@@ -36,7 +36,25 @@
             "program": "${workspaceFolder}/eval/eval_dgaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["++rootdir=data/ibrnet/eval", "+ckpt_path=./data/ibrnet/train/out/pretrain_dgaussian_room_depth_pose/model/model_030000.pth", "++eval_scenes=[flower]", "++num_source_views=5","++expname=test"]
+            "args": ["++rootdir=data/ibrnet/eval", "+ckpt_path=./data/ibrnet/train/out/pretrain_dgaussian_joint_pred/model/model_020000.pth", "++eval_scenes=[trex]", "++num_source_views=8","++expname=pretrain_dgaussian_joint_pred"]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7",
+                "PYTHONPATH":"${workspaceFolder}"
+            },
+            "name": "test:dgaussian-waymo",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval/eval_dgaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["+ckpt_path=../pixelsplat/outputs/wamyo/checkpoints/5000_resnet.ckpt",
+                     "++eval_dataset=waymo", 
+                     "++eval_scenes=[019]", 
+                     "++num_source_views=5",
+                     "++render_video=True",
+                     "++expname=test"]
         },
         {
             "env": {
