@@ -136,13 +136,15 @@ class DGaussianTrainer(BaseTrainer):
                 self.scalars_to_log['loss/smoothness_loss'] = sfm_loss['metrics']['smoothness_loss']
 
         if self.state == 'joint':
-            loss_all += loss_dict['self-sup-depth'].item() * 0.04
+            if self.config.use_depth_loss is True:
+                loss_all += loss_dict['self-sup-depth'].item() * 0.04
             loss_all += self.model.compose_joint_loss(
                 loss_dict['sfm_loss'], loss_dict['gaussian_loss'], self.iteration)
         elif self.state == 'pose_only':
             loss_all += loss_dict['sfm_loss']
         else: # nerf_only
-            loss_all += loss_dict['self-sup-depth'].item() * 0.04
+            if self.config.use_depth_loss is True:
+                loss_all += loss_dict['self-sup-depth'].item() * 0.04
             loss_all += loss_dict['gaussian_loss']
 
         # with torch.autograd.detect_anomaly():

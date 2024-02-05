@@ -49,10 +49,10 @@
             "program": "${workspaceFolder}/eval/eval_dgaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["+ckpt_path=../pixelsplat/outputs/wamyo/checkpoints/5000_resnet.ckpt",
+            "args": ["+ckpt_path=../pixelsplat/outputs/waymo/mv_6000_resnet.ckpt",
                      "++eval_dataset=waymo", 
                      "++eval_scenes=[019]", 
-                     "++num_source_views=5",
+                     "++num_source_views=6",
                      "++render_video=True",
                      "++expname=test"]
         },

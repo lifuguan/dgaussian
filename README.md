@@ -20,7 +20,7 @@ python train_dgaussian.py \
 
 
 export CUDA_VISIBLE_DEVICES=3
-python finetune_dgaussian_stable.py ++expname=finetune_dgaussian_room_depth +ckpt_path=data/ibrnet/train/out/finetune_dgaussian_stable_room/model/model_005000.pth ++use_depth_loss=True 
+python finetune_dgaussian_stable.py ++expname=finetune_dgaussian_room_depth +ckpt_path=model_zoo/dgaussian_resnet.pth ++use_depth_loss=False ++use_pred_pose=True
 
 export CUDA_VISIBLE_DEVICES=3
 python finetune_dgaussian_stable.py ++expname=finetune_dgaussian_room_depth_pose +ckpt_path=data/ibrnet/train/out/finetune_dgaussian_stable_room/model/model_005000.pth ++use_depth_loss=True ++use_pred_pose=True
@@ -28,3 +28,8 @@ python finetune_dgaussian_stable.py ++expname=finetune_dgaussian_room_depth_pose
 
 export CUDA_VISIBLE_DEVICES=2
 python train_dbarf.py --config configs/pretrain_dbarf.txt --rootdir data/ibrnet/train --ckpt_path model_zoo/dbarf_model_200000.pth --expname pretrain_dbarf_504 --num_source_views 5
+
+
+
+
+python -m src.main wandb.mode=disabled +experiment=llff data_loader.train.num_workers=0 data_loader.test.num_workers=0 data_loader.val.num_workers=0 data_loader.train.batch_size=1 checkpointing.load=outputs/2024-01-22/18-31-29/checkpoints/2000.ckpt

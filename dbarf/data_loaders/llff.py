@@ -54,7 +54,7 @@ class LLFFDataset(Dataset):
             scenes = all_scenes
         for i, scene in enumerate(scenes):
             scene_path = os.path.join(base_dir, scene)
-            factor = 4
+            factor = 8
             _, poses, bds, render_poses, i_test, rgb_files = load_llff_data(scene_path, load_imgs=False, factor=factor)
             near_depth = np.min(bds)
             far_depth = np.max(bds)

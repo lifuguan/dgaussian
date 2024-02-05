@@ -85,5 +85,5 @@ class PixelSplat(nn.Module):
             'image': batch['image'][:,i:i+2,:,:,:],
             'near': batch['near'][:,i:i+2],
             'far': batch['far'][:,i:i+2],
-            'index': batch['index'][:,i:i+2],
+            'index': batch['index'][i:i+2],
         }

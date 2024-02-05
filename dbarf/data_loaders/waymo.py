@@ -38,7 +38,7 @@ class WaymoStaticDataset(Dataset):
         self.pose_noise_level = 0
 
         self.args = args
-        self.mode = mode if args.render_video is not True else "train"  # train / test / validation
+        self.mode = mode # if args.render_video is not True else "train"  # train / test / validation
         self.num_source_views = args.num_source_views
         self.random_crop = random_crop
         self.render_rgb_files = []
@@ -61,7 +61,9 @@ class WaymoStaticDataset(Dataset):
         
         
         ############     Wamyo Parameters     ############
-        self.num_cams, self.camera_list =1, [0]
+        # self.num_cams, self.camera_list =1, [0]
+        self.num_cams, self.camera_list =3, [1, 0, 2]
+        
         self.start_timestep, self.end_timestep = 0, 198
         if len(scenes) > 0:
             if isinstance(scenes, str):
@@ -75,9 +77,13 @@ class WaymoStaticDataset(Dataset):
             scene_path = os.path.join(self.folder_path, scene)
             
             rgb_files = []
+            i_test,count = [], 0
             for t in range(self.start_timestep, self.end_timestep):
                 for cam_idx in self.camera_list:
+                    if cam_idx == 0:
+                        i_test.append(count)
                     rgb_files.append(os.path.join(scene_path, "images", f"{t:03d}_{cam_idx}.jpg"))
+                    count += 1
             
             intrinsics, c2w_mats = self.load_calibrations(scene_path)
             
@@ -85,17 +91,9 @@ class WaymoStaticDataset(Dataset):
             near_depth = 0.1
             far_depth = 100.0
             
-            i_test = np.arange(len(rgb_files))[::self.args.llffhold] if mode != 'eval_pose' else []
+            i_test = i_test[::self.args.llffhold] if mode != 'eval_pose' else []
             i_train = np.array([j for j in np.arange(len(rgb_files)) if
                                 (j not in i_test and j not in i_test)])
-
-            # pose_initializer = PoseInitializer(
-            #     data_path=scene_path,
-            #     image_ids=i_train,
-            #     load_external=True,
-            #     args=args
-            # )
-            # self.train_view_graphs.append(pose_initializer.view_graph)
             
             idx_to_node_id, node_id_to_idx = {}, {}
             for j in range(i_train.shape[0]):
@@ -109,13 +107,13 @@ class WaymoStaticDataset(Dataset):
             else:
                 i_render = i_test
 
-            self.train_intrinsics.append([intrinsics] * len(i_train))
+            self.train_intrinsics.append(intrinsics[i_train])
             self.train_poses.append(c2w_mats[i_train])
             self.train_rgb_files.append(np.array(rgb_files)[i_train].tolist())
             
             num_render = len(i_render)
             self.render_rgb_files.extend(np.array(rgb_files)[i_render].tolist())
-            self.render_intrinsics.extend([intrinsics] * num_render)
+            self.render_intrinsics.extend(intrinsics[i_train])
             self.render_poses.extend([c2w_mat for c2w_mat in c2w_mats[i_render]])
             self.render_depth_range.extend([[near_depth, far_depth]]*num_render)
             self.render_train_set_ids.extend([i]*num_render)
@@ -139,16 +137,16 @@ class WaymoStaticDataset(Dataset):
             )
             fx, fy, cx, cy = intrinsic[0], intrinsic[1], intrinsic[2], intrinsic[3]
             # scale intrinsics w.r.t. load size
-            # fx, fy = (
-            #     fx * self.image_size[1] / self.ORIGINAL_SIZE[i][1],
-            #     fy * self.image_size[0] / self.ORIGINAL_SIZE[i][0],
-            # )
-            # cx, cy = (
-            #     cx * self.image_size[1] / self.ORIGINAL_SIZE[i][1],
-            #     cy * self.image_size[0] / self.ORIGINAL_SIZE[i][0],
-            # )
-            # intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
-            intrinsic = np.array([[fx, 0, cx,0], [0, fy, cy,0], [0, 0, 1, 0], [0, 0, 0, 1]])
+            fx, fy = (
+                fx * self.image_size[1] / self.ORIGINAL_SIZE[i][1],
+                fy * self.image_size[0] / self.ORIGINAL_SIZE[i][0],
+            )
+            cx, cy = (
+                cx * self.image_size[1] / self.ORIGINAL_SIZE[i][1],
+                cy * self.image_size[0] / self.ORIGINAL_SIZE[i][0],
+            )
+            intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+            # intrinsic = np.array([[fx, 0, cx,0], [0, fy, cy,0], [0, 0, 1, 0], [0, 0, 0, 1]])
             _intrinsics.append(intrinsic)
 
             # load camera extrinsics
@@ -195,7 +193,7 @@ class WaymoStaticDataset(Dataset):
 
         intrinsics = np.stack(intrinsics, axis=0)
         cam_to_worlds = np.stack(cam_to_worlds, axis=0)
-        return intrinsic, cam_to_worlds
+        return intrinsics, cam_to_worlds
 
 
     def get_data_one_batch(self, idx, nearby_view_id=None):
@@ -211,8 +209,13 @@ class WaymoStaticDataset(Dataset):
     def __getitem__(self, idx):
         idx = idx % len(self.render_rgb_files)
         rgb_file = self.render_rgb_files[idx]
+        render_name = rgb_file[-9:-4]
         rgb = imageio.imread(rgb_file).astype(np.float32) / 255.
         render_pose = self.render_poses[idx]
+                
+        translation = np.array([3, 0, 0])
+        render_pose[:, 3] += np.dot(render_pose[:, :3], translation)
+        
         intrinsics = self.render_intrinsics[idx]
         depth_range = self.render_depth_range[idx]
 
@@ -271,11 +274,13 @@ class WaymoStaticDataset(Dataset):
         # relative_poses = None if self.args.selection_rule == 'pose' else \
         #                  get_relative_poses(idx, view_graph['two_view_geometries'], idx_to_node_id, nearest_pose_ids)
 
+        src_name = []
         src_rgbs = []
         src_cameras = []
         src_intrinsics, src_extrinsics = [], []
         for id in nearest_pose_ids:
             src_rgb = imageio.imread(train_rgb_files[id]).astype(np.float32) / 255.
+            src_name.append(train_rgb_files[id][-9:-4])
             train_pose = train_poses[id]
             train_intrinsics_ = train_intrinsics[id]
             
@@ -292,16 +297,15 @@ class WaymoStaticDataset(Dataset):
 
         src_intrinsics, src_extrinsics = np.stack(src_intrinsics, axis=0), np.stack(src_extrinsics, axis=0)
     
-        pix_rgb, pix_camera, pix_src_rgbs, pix_src_cameras, pix_intrinsics, pix_src_intrinsics = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
+        # pix_rgb, pix_camera, pix_src_rgbs, pix_src_cameras, pix_intrinsics, pix_src_intrinsics = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
+        pix_rgb, camera, pix_src_rgbs, src_cameras, _, _ = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
         
         pix_src_extrinsics = torch.from_numpy(src_extrinsics).float()
         pix_extrinsics = torch.from_numpy(render_pose).unsqueeze(0).float()
         
-        pix_src_intrinsics = self.normalize_intrinsics(torch.from_numpy(pix_src_intrinsics[:,:3,:3]).float(), self.image_size)
-        pix_intrinsics = self.normalize_intrinsics(torch.from_numpy(pix_intrinsics[:3,:3]).unsqueeze(0).float(), self.image_size)
+        pix_src_intrinsics = self.normalize_intrinsics(torch.from_numpy(src_intrinsics[:,:3,:3]).float(), self.image_size)
+        pix_intrinsics = self.normalize_intrinsics(torch.from_numpy(intrinsics[:3,:3]).unsqueeze(0).float(), self.image_size)
 
-        # intrinsics[:, :2, :2] *= self.ratio
-        # src_intrinsics[:, :2, :2]=src_intrinsics[:,:2,:2]*self.ratio
         
         depth_range = torch.tensor([depth_range[0] * 0.9, depth_range[1] * 1.6], dtype=torch.float32)
 
@@ -334,7 +338,7 @@ class WaymoStaticDataset(Dataset):
                         "image": torch.from_numpy(pix_src_rgbs[..., :3]).permute(0, 3, 1, 2),
                         "near":  depth_range[0].repeat(num_select) / scale,
                         "far": depth_range[1].repeat(num_select) / scale,
-                        "index": torch.from_numpy(nearest_pose_ids),
+                        "index": src_name,
                 },
                 "target": {
                         "extrinsics": pix_extrinsics,
@@ -342,7 +346,7 @@ class WaymoStaticDataset(Dataset):
                         "image": torch.from_numpy(pix_rgb[..., :3]).unsqueeze(0).permute(0, 3, 1, 2),
                         "near": depth_range[0].unsqueeze(0) / scale,
                         "far": depth_range[1].unsqueeze(0) / scale,
-                        "index": torch.tensor([train_set_id]),
+                        "index": render_name,
                 },
                 }
     def normalize_intrinsics(self, intrinsics, img_size):
