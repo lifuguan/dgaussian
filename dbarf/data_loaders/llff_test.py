@@ -50,9 +50,9 @@ class LLFFTestDataset(Dataset):
         self.node_id_to_idx_list = []
         self.train_view_graphs = []
     
-        self.image_size = (176, 240)
-        # self.image_size = (378, 504)
-        out_w = 240
+        # self.image_size = (176, 240)
+        self.image_size = (378, 504)
+        out_w = 504
         self.ratio = out_w / 504
         self.h, self.w = int(self.ratio*378), int(out_w)
         
@@ -208,13 +208,19 @@ class LLFFTestDataset(Dataset):
         pix_src_extrinsics = torch.from_numpy(src_extrinsics).float()
         pix_extrinsics = torch.from_numpy(render_pose).unsqueeze(0).float()
         
+        # crop
+        # pix_rgb, camera, pix_src_rgbs, src_cameras, intrinsics, src_intrinsics,center_h,center_w = random_crop(rgb,camera,src_rgbs,src_cameras, size=(160, 224), center=None)
+        # pix_src_intrinsics = self.normalize_intrinsics_1(torch.from_numpy(src_intrinsics[:,:3,:3]).float(),(160, 224),center_h,center_w)
+        # pix_intrinsics = self.normalize_intrinsics_1(torch.from_numpy(intrinsics[:3,:3]).unsqueeze(0).float(), (160, 224),center_h,center_w)
+     
+
         pix_src_intrinsics = self.normalize_intrinsics(torch.from_numpy(pix_src_intrinsics[:,:3,:3]).float(), self.image_size)
         pix_intrinsics = self.normalize_intrinsics(torch.from_numpy(pix_intrinsics[:3,:3]).unsqueeze(0).float(), self.image_size)
 
-        # intrinsics[:, :2, :2] *= self.ratio
+        # # intrinsics[:, :2, :2] *= self.ratio
         # src_intrinsics[:, :2, :2]=src_intrinsics[:,:2,:2]*self.ratio
         
-        depth_range = torch.tensor([depth_range[0] * 0.9, depth_range[1] * 1.6], dtype=torch.float32)
+        depth_range = torch.tensor([depth_range[0] * 0.9, depth_range[1] * 1.5], dtype=torch.float32)
 
         # Resize the world to make the baseline 1.
         if pix_src_extrinsics.shape[0] == 2:
@@ -264,4 +270,13 @@ class LLFFTestDataset(Dataset):
         intrinsics_normalized[:, 1, 1] /= h
         intrinsics_normalized[:, 0, 2] = 0.5
         intrinsics_normalized[:, 1, 2] = 0.5
+        return intrinsics_normalized
+    def normalize_intrinsics_1(self, intrinsics, img_size,center_h,center_w):
+        h, w = img_size
+        # 归一化内参矩阵
+        intrinsics_normalized = intrinsics.clone().float()
+        intrinsics_normalized[:, 0, 0] /= w
+        intrinsics_normalized[:, 1, 1] /= h
+        intrinsics_normalized[:, 0, 2] /= w
+        intrinsics_normalized[:, 1, 2] /= h
         return intrinsics_normalized

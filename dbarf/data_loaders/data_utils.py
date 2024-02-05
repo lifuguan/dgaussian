@@ -111,7 +111,8 @@ def random_crop(rgb, camera, src_rgbs, src_cameras, size=(400, 600), center=None
     else:
         center_h = np.random.randint(low=out_h // 2 + 1, high=h - out_h // 2 - 1)
         center_w = np.random.randint(low=out_w // 2 + 1, high=w - out_w // 2 - 1)
-
+    center_h=80
+    center_w=112
     rgb_out = rgb[center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2, :]
     src_rgbs = np.array(src_rgbs)
     src_rgbs = src_rgbs[:, center_h - out_h // 2:center_h + out_h // 2,
@@ -124,8 +125,7 @@ def random_crop(rgb, camera, src_rgbs, src_cameras, size=(400, 600), center=None
     src_cameras[:, 8] -= center_h - out_h // 2
     src_cameras[:, 0] = out_h
     src_cameras[:, 1] = out_w
-    return rgb_out, camera, src_rgbs, src_cameras, camera[2:18].reshape(4, 4)[..., :3, :3], src_cameras[:, 2:18].reshape(-1, 4, 4)[..., :3, :3]
-
+    return rgb_out, camera, src_rgbs, src_cameras, camera[2:18].reshape(4, 4)[..., :3, :3], src_cameras[:, 2:18].reshape(-1, 4, 4)[..., :3, :3],center_h,center_w
 
 def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
     h, w = rgb.shape[:2]

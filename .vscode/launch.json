@@ -5,30 +5,91 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "env": {"CUDA_VISIBLE_DEVICES": "5",},
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+            },
+            "name": "psnr",
+            "type": "python",
+            "request": "launch",
+            "program": "compare.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+            },
+            "name": "concat",
+            "type": "python",
+            "request": "launch",
+            "program": "concat.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+            },
             "name": "train:dbarf",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/train_dbarf.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth", "--expname", "test"]
+            "args": [
+                "--config",
+                "configs/pretrain_dbarf.txt",
+                "--rootdir",
+                "data/ibrnet/train",
+                "--ckpt_path",
+                "model_zoo/dbarf_model_200000.pth",
+                "--expname",
+                "test"
+            ]
         },
         {
-            "env": {"CUDA_VISIBLE_DEVICES": "4",},
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "4",
+            },
             "name": "test:dbarf",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/eval/eval_dbarf.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "data/ibrnet/train/out/pretrain_dbarf_504/model/model_005000.pth" , "--eval_scenes", "room"]
+            "args": [
+                "--config",
+                "configs/pretrain_dbarf.txt",
+                "--rootdir",
+                "data/ibrnet/train",
+                "--ckpt_path",
+                "model_zoo/dgaussian_resnet_2.pth",
+                "--eval_scenes",
+                "room"
+            ]
             // "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "room"]
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "6",
-                "PYTHONPATH":"${workspaceFolder}"
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "test:dgaussian-crop",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval_crop.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/eval",
+                "+ckpt_path=./model_zoo/dgaussian_resnet.pth",
+                "++eval_scenes=[room]",
+                "++num_source_views=5",
+                "++expname=test"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "test:dgaussian-2",
             "type": "python",
@@ -36,12 +97,18 @@
             "program": "${workspaceFolder}/eval/eval_dgaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["++rootdir=data/ibrnet/eval", "+ckpt_path=./data/ibrnet/train/out/pretrain_dgaussian_room_depth_pose/model/model_030000.pth", "++eval_scenes=[flower]", "++num_source_views=5","++expname=test"]
+            "args": [
+                "++rootdir=data/ibrnet/eval",
+                "+ckpt_path=./model_zoo/dgaussian_resnet.pth",
+                "++eval_scenes=[room]",
+                "++num_source_views=5",
+                "++expname=test"
+            ]
         },
         {
             "env": {
                 "CUDA_VISIBLE_DEVICES": "4",
-                "PYTHONPATH":"${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "train:gaussian",
             "type": "python",
@@ -49,14 +116,18 @@
             "program": "${workspaceFolder}/train_gaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dgaussian_resnet.pth",
-                     "++eval_scenes=[room]","++num_source_views=5",
-                     "++expname=no_depth_room_lr"]
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=model_zoo/dgaussian_resnet.pth",
+                "++eval_scenes=[room]",
+                "++num_source_views=5",
+                "++expname=no_depth_room_lr"
+            ]
         },
         {
             "env": {
                 "CUDA_VISIBLE_DEVICES": "6",
-                "PYTHONPATH":"${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "finetune:dgaussian-room",
             "type": "python",
@@ -64,14 +135,21 @@
             "program": "${workspaceFolder}/finetune_dgaussian_stable.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dgaussian_resnet.pth",
-                     "++eval_scenes=[room]","++train_scenes=[room]", "++num_source_views=8",
-                     "++expname=test", "++use_depth_loss=False" , "++use_pred_pose=True"]
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=model_zoo/dgaussian_resnet.pth",
+                "++eval_scenes=[room]",
+                "++train_scenes=[room]",
+                "++num_source_views=8",
+                "++expname=test",
+                "++use_depth_loss=False",
+                "++use_pred_pose=True"
+            ]
         },
         {
             "env": {
                 "CUDA_VISIBLE_DEVICES": "6",
-                "PYTHONPATH":"${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "train:test",
             "type": "python",
@@ -79,9 +157,15 @@
             "program": "${workspaceFolder}/train_dgaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["++rootdir=data/ibrnet/train", "+ckpt_path=model_zoo/dgaussian_resnet.pth",
-                     "++eval_scenes=[room]","++train_scenes=[room]","++num_source_views=8",
-                     "++expname=test", "++use_depth_loss=True"]
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=model_zoo/dgaussian_resnet.pth",
+                "++eval_scenes=[room]",
+                "++train_scenes=[room]",
+                "++num_source_views=8",
+                "++expname=test",
+                "++use_depth_loss=True"
+            ]
         },
     ]
 }
