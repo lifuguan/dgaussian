@@ -31,7 +31,6 @@ class TrajectoryFn(Protocol):
 class PixelSplat(nn.Module):
     encoder: nn.Module
     decoder: Decoder
-
     def __init__(
         self,
         encoder: Encoder,
@@ -48,6 +47,8 @@ class PixelSplat(nn.Module):
         self.data_shim = get_data_shim(self.encoder)
 
     def forward(self, batch, global_step: int):
+
+        
         _, _, _, h, w = batch["target"]["image"].shape
 
         # Run the model.

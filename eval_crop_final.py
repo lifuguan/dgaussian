@@ -1,6 +1,11 @@
+from copy import copy
+from logging import root
+from math import ceil
 import sys
+from tkinter import CENTER
 import hydra
 from omegaconf import DictConfig
+import copy
 
 # sys.path.append('./')
 # sys.path.append('../')
@@ -22,8 +27,9 @@ from dbarf.loss.ssim_torch import ssim as ssim_torch
 from dbarf.geometry.depth import inv2depth
 from dbarf.model.pixelsplat.decoder import get_decoder
 from dbarf.model.pixelsplat.encoder import get_encoder
-from dbarf.model.pixelsplat.pixelsplat import PixelSplat
-
+from dbarf.model.pixelsplat.pixelsplat_crop import PixelSplat
+from concat import concat
+from compare import compare
 mse2psnr = lambda x: -10. * np.log(x+TINY_NUMBER) / np.log(10.)
 
 
@@ -69,9 +75,36 @@ def compose_state_dicts(model) -> dict:
 
     return state_dicts
 
+def random_crop(data,size=[160,224] ,center=None):
+    _,_,_,h, w = data['context']['image'].shape
+    # size=torch.from_numpy(size)
+    batch=copy.deepcopy(data)
+    out_h, out_w = size[0], size[1]
+
+    if center is not None:
+        center_h, center_w = center
+    else:
+        center_h = np.random.randint(low=out_h // 2 + 1, high=h - out_h // 2 - 1)
+        center_w = np.random.randint(low=out_w // 2 + 1, high=w - out_w // 2 - 1)
+    batch['context']['image'] = batch['context']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
+    # batch['target']['image'] = batch['target']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
+
+    batch['context']['intrinsics'][:,:,0,0]=batch['context']['intrinsics'][:,:,0,0]*w/out_w
+    batch['context']['intrinsics'][:,:,1,1]=batch['context']['intrinsics'][:,:,1,1]*h/out_h
+    batch['context']['intrinsics'][:,:,0,2]=(batch['context']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
+    batch['context']['intrinsics'][:,:,1,2]=(batch['context']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
+
+    # batch['target']['intrinsics'][:,:,0,0]=batch['target']['intrinsics'][:,:,0,0]*w/out_w
+    # batch['target']['intrinsics'][:,:,1,1]=batch['target']['intrinsics'][:,:,1,1]*h/out_h
+    # batch['target']['intrinsics'][:,:,0,2]=(batch['target']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
+    # batch['target']['intrinsics'][:,:,1,2]=(batch['target']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
+
+
+
+    return batch
 @hydra.main(
     version_base=None,
-    config_path="../configs",
+    config_path="./configs",
     config_name="pretrain_dgaussian",
 )
 
@@ -158,24 +191,40 @@ def eval(cfg_dict: DictConfig):
                 scaled_shape=data['scaled_shape'])
             pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
             pred_depth = inv2depth(pred_inv_depth)
-            # pred_depth_0 = inv2depth(pred_inv_depth[0])
-            # pred_depth_1 = inv2depth(pred_inv_depth[1])    #b 1 h w
-            # pred_depth_2 = inv2depth(pred_inv_depth[2])
-            # pred_depth_3 = inv2depth(pred_inv_depth[3])
-            # pred_depth_4 = inv2depth(pred_inv_depth[4])
-            # pred_depth_5 = inv2depth(pred_inv_depth[5])
-            # pred_depth=torch.cat(pred_depth_0,pred_depth_1,pred_depth_2,pred_depth_3,pred_depth_4,pred_depth_5,dim=1)
-            # batch['context']['depth'] = pred_depth[:-2]
-            # batch['target']['depth']=pred_depth[-1]
+            
             # if True:
             #     num_views = data['src_cameras'].shape[1]
             #     target_pose = data['camera'][0,-16:].reshape(-1, 4, 4).repeat(num_views, 1, 1).to("cuda:0")
             #     context_poses = projector.get_train_poses(target_pose, pred_rel_poses)
             #     data['context']['extrinsics'] = context_poses.unsqueeze(0)
+            root_1='/home/gyy/Downloads/dgaussian'
+            # w=504
+            # h=378
+            # crop_h=160
+            # crop_w=224
+            # row=ceil(h/crop_h)
+            # col=ceil(w/crop_w)
+            # gt_full=data['target']['image'].squeeze(0).squeeze(0)
+            # for i in range(row):
+            #     for j in range(col):
+            #         if i==row-1 and j==col-1:
+            #             data_crop=random_crop(data,size=[crop_h,crop_w],center=(int(h-crop_h//2),int(w-crop_w//2)))
+            #         elif i==row-1:#最后一行
+            #             data_crop=random_crop(data,size=[crop_h,crop_w],center=(int(h-crop_h//2),int(crop_w//2+j*crop_w)))
+            #         elif j==col-1:#z最后一列
+            #             data_crop=random_crop(data,size=[crop_h,crop_w],center=(int(crop_h//2+i*crop_h),int(w-crop_w//2)))
+            #         else:
+            #             data_crop=random_crop(data,size=[crop_h,crop_w],center=(int(crop_h//2+i*crop_h),int(crop_w//2+j*crop_w)))
+                        
+
             batch_ = data_shim(data, device="cuda:0")
             batch = gaussian_model.data_shim(batch_)       
             output, gt_rgb = gaussian_model(batch, i)
+
             
+            coarse_pred_rgb = output['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
+
+
             pred_depth_gaussins=output['depth'].cpu().squeeze(0).squeeze(0)
 
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth_2.png'),

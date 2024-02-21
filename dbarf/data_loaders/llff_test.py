@@ -51,9 +51,10 @@ class LLFFTestDataset(Dataset):
         self.train_view_graphs = []
     
         # self.image_size = (176, 240)
-        self.image_size = (378, 504)
-        out_w = 504
-        self.ratio = out_w / 504
+        # self.image_size = (378, 504)
+        self.image_size = (320, 448)
+        out_w = 448
+        self.ratio = 448 / 504
         self.h, self.w = int(self.ratio*378), int(out_w)
         
         all_scenes = os.listdir(self.folder_path)
@@ -145,7 +146,7 @@ class LLFFTestDataset(Dataset):
             else:
                 id_render = -1
             subsample_factor = np.random.choice(np.arange(1, 4), p=[0.2, 0.45, 0.35])
-            num_select = self.num_source_views + np.random.randint(low=-2, high=2)
+            num_select = self.num_source_views 
         else:
             id_render = -1
             subsample_factor = 1
@@ -203,8 +204,9 @@ class LLFFTestDataset(Dataset):
 
         src_intrinsics, src_extrinsics = np.stack(src_intrinsics, axis=0), np.stack(src_extrinsics, axis=0)
     
-        pix_rgb, pix_camera, pix_src_rgbs, pix_src_cameras, pix_intrinsics, pix_src_intrinsics = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
+        pix_rgb, pix_camera, pix_src_rgbs, pix_src_cameras, pix_intrinsics, pix_src_intrinsics = loader_resize(rgb,camera,src_rgbs,src_cameras, size=self.image_size)
         
+       
         pix_src_extrinsics = torch.from_numpy(src_extrinsics).float()
         pix_extrinsics = torch.from_numpy(render_pose).unsqueeze(0).float()
         
@@ -237,10 +239,10 @@ class LLFFTestDataset(Dataset):
             scale = 1
 
         
-        return {'rgb': torch.from_numpy(rgb[..., :3]),
+        return {'rgb': torch.from_numpy(pix_rgb[..., :3]),
                 'camera': torch.from_numpy(camera),
                 'rgb_path': rgb_file,
-                'src_rgbs': torch.from_numpy(src_rgbs[..., :3]),
+                'src_rgbs': torch.from_numpy(pix_src_rgbs[..., :3]),
                 'src_cameras': torch.from_numpy(src_cameras),
                 'depth_range': depth_range,
                 'idx': idx,

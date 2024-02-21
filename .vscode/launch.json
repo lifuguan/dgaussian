@@ -75,7 +75,7 @@
             "name": "test:dgaussian-crop",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/eval_crop.py",
+            "program": "${workspaceFolder}/eval_crop_final.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -107,7 +107,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "4",
+                "CUDA_VISIBLE_DEVICES": "0",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "train:gaussian",
@@ -148,7 +148,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "6",
+                "CUDA_VISIBLE_DEVICES": "0",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "train:test",

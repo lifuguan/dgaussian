@@ -86,7 +86,7 @@ class DepthPoseNet(nn.Module):
         
         cost = (fmap - fmap_warped)**2
         
-        return cost
+        return cost    #反过来投？拿五个depth往target上投影，作五个cost。
     
     def depth_cost_calc(self, inv_depth, fmap, fmaps_ref, pose_list, K, ref_K, scale_factor):
         cost_list = []
@@ -136,7 +136,7 @@ class DepthPoseNet(nn.Module):
             pose_list_init.append(self.pose_head(torch.cat([fmap1, fmap_ref], dim=1)))
         
         # Initialize depths.
-        inv_depth_init = self.depth_head(fmap1, act_fn=torch.sigmoid)
+        inv_depth_init = self.depth_head(fmap1, act_fn=torch.sigmoid)  
         # print(f'[DEBUG] inv_depth_init shape: {inv_depth_init.shape}')
         up_mask = self.upmask_net(fmap1)
         inv_depth_up_init = self.upsample_depth(inv_depth_init, up_mask, ratio=self.feat_ratio, image_size=image_size)

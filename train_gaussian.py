@@ -17,8 +17,37 @@ from train_ibrnet import synchronize
 from dbarf.base.trainer import BaseTrainer
 
 from dbarf.loss.criterion import MaskedL2ImageLoss
-
+from math import ceil
 # torch.autograd.set_detect_anomaly(True)
+import copy
+
+def random_crop(data,size=[160,224] ,center=None):
+    _,_,_,h, w = data['context']['image'].shape
+    # size=torch.from_numpy(size)
+    batch=copy.deepcopy(data)
+    out_h, out_w = size[0], size[1]
+
+    if center is not None:
+        center_h, center_w = center
+    else:
+        center_h = np.random.randint(low=out_h // 2 + 1, high=h - out_h // 2 - 1)
+        center_w = np.random.randint(low=out_w // 2 + 1, high=w - out_w // 2 - 1)
+    batch['context']['image'] = batch['context']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
+    batch['target']['image'] = batch['target']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
+
+    batch['context']['intrinsics'][:,:,0,0]=batch['context']['intrinsics'][:,:,0,0]*w/out_w
+    batch['context']['intrinsics'][:,:,1,1]=batch['context']['intrinsics'][:,:,1,1]*h/out_h
+    batch['context']['intrinsics'][:,:,0,2]=(batch['context']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
+    batch['context']['intrinsics'][:,:,1,2]=(batch['context']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
+
+    batch['target']['intrinsics'][:,:,0,0]=batch['target']['intrinsics'][:,:,0,0]*w/out_w
+    batch['target']['intrinsics'][:,:,1,1]=batch['target']['intrinsics'][:,:,1,1]*h/out_h
+    batch['target']['intrinsics'][:,:,0,2]=(batch['target']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
+    batch['target']['intrinsics'][:,:,1,2]=(batch['target']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
+
+
+
+    return batch,center_h,center_w
 
 class GaussianTrainer(BaseTrainer):
     def __init__(self, config) -> None:
@@ -67,27 +96,50 @@ class GaussianTrainer(BaseTrainer):
         # |-------------------------->------------------------------------|
         if self.iteration == 0:
             self.state = self.model.switch_state_machine(state='nerf_only')
+        self.optimizer.zero_grad()
         batch_ = data_shim(data_batch, device=self.device)
         batch = self.model.gaussian_model.data_shim(batch_)
-        ret, data_gt = self.model.gaussian_model(batch, self.iteration)
-
+        with torch.no_grad():
+            ret, data_gt = self.model.gaussian_model(batch, self.iteration)
+        ret['rgb'].requires_grad_(True)
+        coarse_loss = self.rgb_loss(ret, data_gt)
+        coarse_loss.backward()     
+        rgb_pred_grad=ret['rgb'].grad
+        #随机裁剪中心
+        _, _, _, h, w = batch["target"]["image"].shape
+        out_h=160
+        out_w=224
+        row=ceil(h/out_h)
+        col=ceil(w/out_w)
+        
+        for i in range(row):
+            for j in range(col):
+                if i==row-1 and j==col-1:
+                    data_crop,center_h,center_w=random_crop(  batch,size=[out_h,out_w],center=(int(h-out_h//2),int(w-out_w//2)))
+                elif i==row-1:#最后一行
+                    data_crop,center_h,center_w=random_crop(  batch,size=[out_h,out_w],center=(int(h-out_h//2),int(out_w//2+j*out_w)))
+                elif j==col-1:#z最后一列
+                    data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(w-out_w//2)))
+                else:
+                    data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(out_w//2+j*out_w)))  
+                # Run the model.
+                ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration)
+        # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
+        # coarse_loss.backward()
+                ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])
+        self.optimizer.step()
+        self.scheduler.step()
         loss_all = 0
         loss_dict = {}
-
         # compute loss
-        self.optimizer.zero_grad()
-
         coarse_loss = self.rgb_loss(ret, data_gt)
         loss_dict['gaussian_loss'] = coarse_loss
         loss_all += loss_dict['gaussian_loss']
-
         # with torch.autograd.detect_anomaly():
-        loss_all.backward()
-        self.optimizer.step()
-        self.scheduler.step()
+       
 
         if self.config.local_rank == 0 and self.iteration % self.config.n_tensorboard == 0:
-            mse_error = img2mse(ret['rgb'], data_gt['rgb']).item()
+            mse_error = img2mse(ret_patch['rgb'], data_gt_patch['rgb']).item()
             self.scalars_to_log['train/coarse-loss'] = mse_error
             self.scalars_to_log['train/coarse-psnr'] = mse2psnr(mse_error)
             self.scalars_to_log['loss/final'] = loss_all.item()
@@ -120,6 +172,8 @@ def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='',
 
 
     batch = data_shim(data, device=device)
+    batch = model.gaussian_model.data_shim(batch)
+
     ret, data_gt = model.gaussian_model(batch, global_step)
         
 
