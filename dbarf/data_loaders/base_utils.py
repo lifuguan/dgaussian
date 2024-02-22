@@ -12,6 +12,12 @@ import yaml
 from plyfile import PlyData
 from skimage.io import imread
 
+#######################config######################################
+def load_cfg(path):
+    with open(path, 'r') as f:
+        return yaml.load(f, Loader=yaml.FullLoader)
+
+
 #######################io#########################################
 from transforms3d.axangles import mat2axangle
 from transforms3d.euler import euler2mat

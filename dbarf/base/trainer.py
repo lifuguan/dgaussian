@@ -81,9 +81,9 @@ class BaseTrainer(object):
         self._check()
 
     def __del__(self):
-        if not self.train_done:
-            score = self.validate()
-            self.save_checkpoint(score=score)
+        # if not self.train_done:
+        #     score = self.validate()
+        #     self.save_checkpoint(score=score)
         
         if self.writer is not None:
             self.writer.flush()
@@ -176,8 +176,6 @@ class BaseTrainer(object):
         assert self.train_loader is not None
         assert self.val_loader is not None
 
-        pbar = tqdm.trange(self.config.n_iters, desc=f"Training {self.config.expname}", leave=False)
-
         iter_start = self.load_checkpoint(load_optimizer=not self.config.no_load_opt,
                                           load_scheduler=not self.config.no_load_scheduler)
         # if iter_start == 0:
@@ -191,7 +189,6 @@ class BaseTrainer(object):
         self.iteration = 0
 
         while self.iteration < iter_start:
-            pbar.update(1)
             self.iteration += 1
             
         print(f'train set len {len(self.train_loader)}')
@@ -204,10 +201,6 @@ class BaseTrainer(object):
                 self.train_iteration(data_batch=self.train_data)
 
                 if self.config.local_rank == 0:
-                    # Main validation logic.
-                    # if self.iteration % self.config.n_validation == 0:
-                    #     score = self.validate()
-                    
                     # log to tensorboard.
                     if self.iteration % self.config.n_tensorboard == 0:
                         self.log_info()
@@ -216,8 +209,6 @@ class BaseTrainer(object):
                     if self.iteration % self.config.n_checkpoint == 0:
                         score = self.validate()
                         self.save_checkpoint(score=score)
-                
-                pbar.update(1)
                 
                 self.iteration += 1
                 if self.iteration > self.config.n_iters + 1:

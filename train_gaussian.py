@@ -1,25 +1,82 @@
 import random
 import numpy as np
-
-import hydra
-from omegaconf import DictConfig
+import time
+import types
+import os
 
 import torch
 import torch.utils.data.distributed
-
+import torch.distributed as dist
 
 from dbarf.geometry.align_poses import align_ate_c2b_use_a2b
 from dbarf.model.gaussian import GaussianModel
-from dbarf.pose_util import Pose, rotation_distance
 from dbarf.visualization.feature_visualizer import *
+from dbarf.base.trainer import BaseTrainer
+from dbarf.loss.criterion import MaskedL2ImageLoss
+from dbarf.data_loaders.base_utils import load_cfg
+
 from utils_loc import img2mse, mse2psnr, img_HWC2CHW, colorize, img2psnr, data_shim
 from train_ibrnet import synchronize
-from dbarf.base.trainer import BaseTrainer
-
-from dbarf.loss.criterion import MaskedL2ImageLoss
 from math import ceil
-# torch.autograd.set_detect_anomaly(True)
+
 import copy
+
+def setup_for_distributed(is_master):
+    """
+    This function disables printing when not in master process
+    """
+    import builtins as __builtin__
+    builtin_print = __builtin__.print
+
+    def print(*args, **kwargs):
+        force = kwargs.pop('force', False)
+        if is_master or force:
+            builtin_print(*args, **kwargs)
+
+    __builtin__.print = print
+    
+def init_distributed_mode(args):
+    if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
+        args.rank = int(os.environ["RANK"])
+        args.world_size = int(os.environ['WORLD_SIZE'])
+        args.gpu = int(os.environ['LOCAL_RANK'])
+    elif 'SLURM_PROCID' in os.environ:
+        args.rank = int(os.environ['SLURM_PROCID'])
+        args.gpu = args.rank % torch.cuda.device_count()
+    else:
+        print('Not using distributed mode')
+        args.distributed = False
+        args.rank=0
+        return
+
+    args.distributed = True
+
+    torch.cuda.set_device(args.gpu)
+    args.dist_backend = 'nccl'
+    print('| distributed init (rank {}): {}'.format(
+        args.rank, args.dist_url), flush=True)
+    torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
+                                         world_size=args.world_size, rank=args.rank)
+    torch.distributed.barrier()
+    setup_for_distributed(args.rank == 0)
+
+def worker_init_fn(worker_id):
+    np.random.seed(np.random.get_state()[1][0] + worker_id)
+
+
+def synchronize():
+    """
+    Helper function to synchronize (barrier) among all processes when
+    using distributed training
+    """
+    if not dist.is_available():
+        return
+    if not dist.is_initialized():
+        return
+    world_size = dist.get_world_size()
+    if world_size == 1:
+        return
+    dist.barrier()
 
 def random_crop(data,size=[160,224] ,center=None):
     _,_,_,h, w = data['context']['image'].shape
@@ -96,11 +153,16 @@ class GaussianTrainer(BaseTrainer):
         # |-------------------------->------------------------------------|
         if self.iteration == 0:
             self.state = self.model.switch_state_machine(state='nerf_only')
+        start_time = time.time()
         self.optimizer.zero_grad()
         batch_ = data_shim(data_batch, device=self.device)
-        batch = self.model.gaussian_model.data_shim(batch_)
+        if self.config.distributed is True:
+            batch = self.model.gaussian_model.module.data_shim(batch_)
+        else:
+            batch = self.model.gaussian_model.data_shim(batch_)
         with torch.no_grad():
             ret, data_gt = self.model.gaussian_model(batch, self.iteration)
+
         ret['rgb'].requires_grad_(True)
         coarse_loss = self.rgb_loss(ret, data_gt)
         coarse_loss.backward()     
@@ -124,9 +186,8 @@ class GaussianTrainer(BaseTrainer):
                     data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(out_w//2+j*out_w)))  
                 # Run the model.
                 ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration)
-        # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
-        # coarse_loss.backward()
                 ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])
+
         self.optimizer.step()
         self.scheduler.step()
         loss_all = 0
@@ -137,6 +198,8 @@ class GaussianTrainer(BaseTrainer):
         loss_all += loss_dict['gaussian_loss']
         # with torch.autograd.detect_anomaly():
        
+        end_time = time.time()
+       
 
         if self.config.local_rank == 0 and self.iteration % self.config.n_tensorboard == 0:
             mse_error = img2mse(ret_patch['rgb'], data_gt_patch['rgb']).item()
@@ -146,6 +209,14 @@ class GaussianTrainer(BaseTrainer):
             self.scalars_to_log['loss/rgb_coarse'] = coarse_loss
             # print(f"corse loss: {mse_error}, psnr: {mse2psnr(mse_error)}")
             self.scalars_to_log['lr/Gaussian'] = self.scheduler.get_last_lr()[0]
+            print(
+                f"train step {self.iteration}; "
+                f"scene = {batch['scene']}; "
+                f"context = {batch['context']['index'].tolist()}; "
+                f"time = {end_time - start_time:.2f}s; "
+                f"psnr = {mse2psnr(mse_error):.2f}"
+            )
+        
         
     def validate(self) -> float:
         self.model.switch_to_eval()
@@ -206,31 +277,50 @@ def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='',
 
     return psnr_curr_img
 
-@hydra.main(
-    version_base=None,
-    config_path="./configs",
-    config_name="pretrain_dgaussian",
-)
 
-def train(cfg_dict: DictConfig):
-    args = cfg_dict
+
+def convert_yaml2namespace(d):
+    """
+    递归地将嵌套字典转换为SimpleNamespace对象。
+    """
+    if isinstance(d, dict):
+        for key, value in d.items():
+            d[key] = convert_yaml2namespace(value)
+        return types.SimpleNamespace(**d)
+    elif isinstance(d, list):
+        return [convert_yaml2namespace(item) for item in d]
+    else:
+        return d
+
+def train(flags):
+    args = load_cfg(flags.cfg)
+    args['pixelsplat'] = {}
+    args['pixelsplat']['encoder'] = load_cfg(args['model'][0])
+    args['pixelsplat']['decoder'] = load_cfg(args['model'][1])
+    args = convert_yaml2namespace(args)
+    args.ckpt_path = flags.ckpt_path
+    args.eval_scenes = flags.eval_scenes
+    args.train_scenes = flags.train_scenes
+    args.num_source_views = flags.num_source_views
+    args.expname = flags.expname
+    args.distributed = flags.distributed
+    args.local_rank = flags.local_rank
+    args.dist_url = flags.dist_url
+
+    if args.distributed:
+        args.local_rank = int(os.environ["LOCAL_RANK"])
+        dist.init_process_group(backend="nccl")
     random.seed(args.seed)
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
 
     # Configuration for distributed training.
-    if args.distributed:
-        torch.cuda.set_device(args.local_rank)
-        torch.distributed.init_process_group(backend="nccl", init_method="env://")
-        synchronize()
-        print(f'[INFO] Train in distributed mode')
-        
-    device = "cuda:{}".format(args.local_rank)
+    # init_distributed_mode(args)
 
     trainer = GaussianTrainer(args)
     trainer.train()
 
+import dbarf.config as config
 if __name__ == '__main__':
-    train()
+    parser = config.config_parser()
+    flags = parser.parse_args()
+    train(flags)

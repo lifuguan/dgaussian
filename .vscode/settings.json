@@ -1,4 +1,7 @@
 {
     "python.analysis.typeCheckingMode": "off",
-    "python.pythonPath": "/home/gyy/anaconda3/envs/splat/bin/python"
+    "python.pythonPath": "/home/gyy/anaconda3/envs/splat/bin/python",
+    "python.analysis.extraPaths": [
+        "./dbarf"
+    ]
 }

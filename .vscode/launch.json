@@ -88,7 +88,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "5",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "test:dgaussian-2",
@@ -99,15 +99,17 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/eval",
-                "+ckpt_path=./model_zoo/dgaussian_resnet.pth",
-                "++eval_scenes=[room]",
-                "++num_source_views=5",
+                // "+ckpt_path=../pixelsplat/outputs/llff/room/10000_resnet.ckpt",
+                "+ckpt_path=data/ibrnet/train/out/no_depth_room_lr/model/model_003500.pth",
+                // "+ckpt_path=data/ibrnet/train/out/finetune_dgaussian_stable_room_31.50/model/model_010000.pth",
+                "++eval_scenes=[fern]",
+                "++num_source_views=8",
                 "++expname=test"
             ]
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "4",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "train:gaussian",
@@ -117,11 +119,36 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "++rootdir=data/ibrnet/train",
-                "+ckpt_path=model_zoo/dgaussian_resnet.pth",
-                "++eval_scenes=[room]",
-                "++num_source_views=5",
-                "++expname=no_depth_room_lr"
+                "--cfg", "configs/finetune_dgaussian_stable.yaml",
+                "--ckpt_path", "data/ibrnet/train/out/no_depth_room_lr/model/model_005000.pth",
+                "--eval_scenes", "room",
+                "--train_scenes", "room",
+                "--num_source_views", "8",
+                "--expname", "new_finetune_room"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "4,5",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "train:gaussian-ddp",
+            "type": "python",
+            "request": "launch",
+            // "program": "torchrun",
+            "module": "torch.distributed.run",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--nproc_per_node=2",
+                "${workspaceFolder}/train_gaussian.py",
+                "--distributed",
+                "--cfg", "configs/finetune_dgaussian_stable.yaml",
+                "--ckpt_path", "data/ibrnet/train/out/no_depth_room_lr/model/model_005000.pth",
+                "--eval_scenes", "room",
+                "--train_scenes", "room",
+                "--num_source_views", "8",
+                "--expname", "new_finetune_room"
             ]
         },
         {

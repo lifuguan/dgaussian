@@ -18,8 +18,11 @@ import configargparse
 
 def config_parser():
      parser = configargparse.ArgumentParser()
+     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
+
+
      # general
-     parser.add_argument('--config', is_config_file=True, help='config file path')
+     parser.add_argument('--cfg', type=str, help='config file path')
      parser.add_argument('--rootdir', type=str,
                         default='/home/qw246/S7/code/IBRNet/',
                         help='the path to the project root directory. Replace this path with yours!')

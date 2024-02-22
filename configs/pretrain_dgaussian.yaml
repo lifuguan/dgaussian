@@ -1,7 +1,7 @@
 ### Model Config
-defaults:
-  - pixelsplat/encoder: epipolar
-  - pixelsplat/decoder: splatting_cuda
+model:
+  - : pixelsplat/encoder/epipolar.yaml
+  - : pixelsplat/decoder/splatting_cuda.yaml
 
 ### INPUT
 expname : pretraining_dgaussian_nodepth
@@ -55,7 +55,7 @@ use_depth_loss: True
 
 optimizer:
   lr: 1.5e-4
-  warm_up_steps: 2000
+  warm_up_steps: 100
 ### TESTING
 chunk_size : 2000
 
@@ -70,8 +70,8 @@ feat_loss_scale : 1e1
 
 ### CONSOLE AND TENSORBOARD
 n_validation : 100
-n_tensorboard : 10
-n_checkpoint : 1000
+n_tensorboard : 2
+n_checkpoint : 500
 visdom_port : 9000
 
 ### evaluation options

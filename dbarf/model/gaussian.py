@@ -12,23 +12,23 @@ from dbarf.base.model_base import Model
 from dbarf.model.pixelsplat.decoder import get_decoder
 from dbarf.model.pixelsplat.encoder import get_encoder
 from dbarf.model.pixelsplat.pixelsplat import PixelSplat
+from dbarf.dataset.data_module import get_data_shim
 
 class GaussianModel(Model):
     def __init__(self, args, load_opt=True, load_scheduler=True, pretrained=True):
+        self.args = args
         device = torch.device(f'cuda:{args.local_rank}')
-        
         
         # create generalized 3d gaussian.
         encoder, encoder_visualizer = get_encoder(args.pixelsplat.encoder)
         decoder = get_decoder(args.pixelsplat.decoder)
         self.gaussian_model = PixelSplat(encoder, decoder, encoder_visualizer)
         self.gaussian_model.to(device)
-        # self.gaussian_model.load_state_dict(torch.load('model_zoo/re10k.ckpt')['state_dict'])
         
         self.photometric_loss = MultiViewPhotometricDecayLoss()
 
     def to_distributed(self):
-        super().to_distributed()
+        # super().to_distributed()
 
         if self.args.distributed:
             self.gaussian_model = torch.nn.parallel.DistributedDataParallel(

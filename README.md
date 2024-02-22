@@ -28,3 +28,24 @@ python finetune_dgaussian_stable.py ++expname=finetune_dgaussian_room_depth_pose
 
 export CUDA_VISIBLE_DEVICES=2
 python train_dbarf.py --config configs/pretrain_dbarf.txt --rootdir data/ibrnet/train --ckpt_path model_zoo/dbarf_model_200000.pth --expname pretrain_dbarf_504 --num_source_views 5
+
+
+export CUDA_VISIBLE_DEVICES=4,5
+python -m torch.distributed.launch --nproc_per_node=2 \
+    --master_port=$(( RANDOM % 1000 + 50000 )) train_gaussian.py \
+    --cfg configs/finetune_dgaussian_stable.yaml \
+    --ckpt_path data/ibrnet/train/out/no_depth_room_lr/model/model_005000.pth \
+    --eval_scenes room \
+    --train_scenes room \
+    --num_source_views 8 \
+    --expname new_finetune_room
+
+export CUDA_VISIBLE_DEVICES=4,5
+torchrun --nproc_per_node=2 \
+    train_gaussian.py \
+    --cfg configs/finetune_dgaussian_stable.yaml \
+    --ckpt_path data/ibrnet/train/out/no_depth_room_lr/model/model_005000.pth \
+    --eval_scenes room \
+    --train_scenes room \
+    --num_source_views 8 \
+    --expname new_finetune_room
