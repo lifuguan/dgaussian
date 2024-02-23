@@ -99,6 +99,8 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/eval",
+                // "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_001000.pth",
+                // "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_002000.pth",
                 "+ckpt_path=./model_zoo/dgaussian_resnet.pth",
                 "++eval_scenes=[room]",
                 "++num_source_views=5",
@@ -118,8 +120,9 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/train",
-                "+ckpt_path=model_zoo/dgaussian_resnet.pth",
-                "++eval_scenes=[room]",
+                // "+ckpt_path=model_zoo/dgaussian_resnet.pth",
+                "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_001000.pth",
+                "++eval_scenes=[trex]",
                 "++num_source_views=5",
                 "++expname=no_depth_room_lr"
             ]

@@ -46,7 +46,7 @@ class DBARFModel(IBRNetModel):
         target_image = target_image.permute(0, 3, 1, 2) # [1, 3, h, w]
         ref_imgs = ref_imgs.squeeze(0).permute(0, 3, 1, 2) # [n_views, 3, h, w]
 
-        inv_depths, rel_poses, fmap = self.pose_learner(
+        inv_depths, rel_poses, fmap ,inv_depths_ref_list= self.pose_learner(
             fmaps=None, # fmaps,
             target_image=target_image,
             ref_imgs=ref_imgs,
@@ -60,7 +60,7 @@ class DBARFModel(IBRNetModel):
         if self.pose_learner.training:
             sfm_loss = self.photometric_loss(target_image, ref_imgs, inv_depths, target_intrinsics, ref_intrinsics, rel_poses)
 
-        return inv_depths, rel_poses, sfm_loss, fmap
+        return inv_depths, rel_poses, sfm_loss, fmap,inv_depths_ref_list
 
     def switch_to_eval(self):
         super().switch_to_eval()

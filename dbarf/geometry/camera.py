@@ -276,3 +276,4 @@ class Camera(nn.Module):
 
         # Return pixel coordinates
         return torch.stack([Xnorm, Ynorm], dim=-1).view(B, H, W, 2)
+    # def d_2_depth(self,ref_coords,pose,world_points)   

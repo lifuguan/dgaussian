@@ -136,7 +136,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
             )
 
         # Add the high-resolution skip connection.
-        skip = rearrange(context["image"], "b v c h w -> (b v) c h w")
+        skip = rearrange(context["image"][:,:,:,:h//2,:w//2], "b v c h w -> (b v) c h w")
         skip = self.high_resolution_skip(skip)
         features = features + rearrange(skip, "(b v) c h w -> b v c h w", b=b, v=v)
 
@@ -152,7 +152,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
 
         # Convert the features and depths into Gaussians.
         xy_ray, _ = sample_image_grid((h, w), device)
-        xy_ray = rearrange(xy_ray, "h w xy -> (h w) () xy")
+        xy_ray = rearrange(xy_ray[:h//2,:w//2,:], "h w xy -> (h w) () xy")
         gaussians = rearrange(
             self.to_gaussians(features),
             "... (srf c) -> ... srf c",
@@ -161,7 +161,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
 
         # 在第一张图片上，构建uv坐标系
         offset_xy = gaussians[..., :2].sigmoid()
-        pixel_size = 1 / torch.tensor((w, h), dtype=torch.float32, device=device)
+        pixel_size = 1 / torch.tensor((w//2, h//2), dtype=torch.float32, device=device)
         xy_ray = xy_ray + (offset_xy - 0.5) * pixel_size
 
         gpp = self.cfg.gaussians_per_pixel

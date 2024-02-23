@@ -129,6 +129,7 @@ class EpipolarTransformer(nn.Module):
         #     # q = F.max_pool1d(q, kernel_size=4).reshape(b_, v_, -1, r_, s_, c_)
         
         # Run the transformer.
+        features=features[:,:,:,:40,:56]
         kv = rearrange(features, "b v c h w -> (b v h w) () c")
         features = self.transformer.forward(
             kv,       # 当作query
@@ -136,16 +137,16 @@ class EpipolarTransformer(nn.Module):
             rearrange(q, "b v () r s c -> (b v r) s c"),
             b=b,
             v=v,
-            h=h // self.cfg.downscale,
-            w=w // self.cfg.downscale,
+            h=h // self.cfg.downscale//2,
+            w=w // self.cfg.downscale//2,
         )
         features = rearrange(
             features,
             "(b v h w) () c -> b v c h w",
             b=b,
             v=v,
-            h=h // self.cfg.downscale,
-            w=w // self.cfg.downscale,
+            h=h // self.cfg.downscale//2,
+            w=w // self.cfg.downscale//2,
         )
 
         # If needed, apply upscaling.

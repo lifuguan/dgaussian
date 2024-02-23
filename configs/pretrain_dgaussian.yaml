@@ -16,8 +16,8 @@ local_rank : 0
 
 ## dataset
 train_dataset : llff_test
-train_scenes : []
-dataset_weights : [0.5, 0.5]
+train_scenes : [room]
+dataset_weights : [1]
 eval_dataset : llff_test
 eval_scenes : [room]
 # eval_scenes : [trex, fern, flower, leaves, room, fortress, horns, orchids]

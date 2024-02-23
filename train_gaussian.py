@@ -20,6 +20,8 @@ from dbarf.loss.criterion import MaskedL2ImageLoss
 from math import ceil
 # torch.autograd.set_detect_anomaly(True)
 import copy
+from torchvision.utils import save_image
+
 
 def random_crop(data,size=[160,224] ,center=None):
     _,_,_,h, w = data['context']['image'].shape
@@ -106,12 +108,13 @@ class GaussianTrainer(BaseTrainer):
         coarse_loss.backward()     
         rgb_pred_grad=ret['rgb'].grad
         #随机裁剪中心
+        # import imageio
+        # rgb=ret['rgb'].cpu().squeeze(0).squeeze(0)
         _, _, _, h, w = batch["target"]["image"].shape
         out_h=160
         out_w=224
         row=ceil(h/out_h)
         col=ceil(w/out_w)
-        
         for i in range(row):
             for j in range(col):
                 if i==row-1 and j==col-1:

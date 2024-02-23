@@ -57,7 +57,7 @@ class EpipolarSampler(nn.Module):
         far: Float[Tensor, "batch view"],
     ) -> EpipolarSampling:
         device = images.device
-        b, v, _, _, _ = images.shape
+        b, v, _, h, w = images.shape
 
         # Generate the rays that are projected onto other views.
         xy_ray, origins, directions = self.generate_image_rays(
@@ -66,6 +66,12 @@ class EpipolarSampler(nn.Module):
 
         # Select the camera extrinsics and intrinsics to project onto. For each context
         # view, this means all other context views in the batch.
+        origins =rearrange(origins, "b v (h w) xyz -> b v h w xyz",h=h,w=w)
+        origins =rearrange(origins[:,:,:40,:56,:],"b v h w xyz -> b v (h w) xyz")
+        
+        directions=rearrange(directions, "b v (h w) xyz -> b v h w xyz",h=h,w=w)
+        directions =rearrange(directions[:,:,:40,:56,:],"b v h w xyz -> b v (h w) xyz")
+
         projection = project_rays(
             rearrange(origins, "b v r xyz -> b v () r xyz"),
             rearrange(directions, "b v r xyz -> b v () r xyz"),

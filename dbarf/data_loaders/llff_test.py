@@ -173,7 +173,7 @@ class LLFFTestDataset(Dataset):
             nearest_pose_ids = np.array([self.nearby_view_id])
 
         nearest_pose_ids = np.random.choice(nearest_pose_ids, min(num_select, len(nearest_pose_ids)), replace=False)
-        # print(f'nearest pose ids: {nearest_pose_ids}')
+        print(f'nearest pose ids: {nearest_pose_ids}')
 
         assert id_render not in nearest_pose_ids
         # occasionally include input image
