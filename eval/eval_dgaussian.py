@@ -23,7 +23,7 @@ from dbarf.geometry.depth import inv2depth
 from dbarf.model.pixelsplat.decoder import get_decoder
 from dbarf.model.pixelsplat.encoder import get_encoder
 from dbarf.model.pixelsplat.pixelsplat import PixelSplat
-
+from einops import rearrange
 mse2psnr = lambda x: -10. * np.log(x+TINY_NUMBER) / np.log(10.)
 
 
@@ -182,8 +182,12 @@ def eval(cfg_dict: DictConfig):
             #     context_poses = projector.get_train_poses(target_pose, pred_rel_poses)
             #     data['context']['extrinsics'] = context_poses.unsqueeze(0)
             batch_ = data_shim(data, device="cuda:0")
-            batch = gaussian_model.data_shim(batch_)       
-            output, gt_rgb = gaussian_model(batch, i)
+            batch = gaussian_model.data_shim(batch_)   
+            features=gaussian_model.encoder.backbone(batch['context'])
+            features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
+            features = gaussian_model.encoder.backbone_projection(features)
+            features = rearrange(features, "b v h w c -> b v c h w")    
+            output, gt_rgb = gaussian_model(batch, i,features)
             
             pred_depth_gaussins=output['depth'].cpu().squeeze(0).squeeze(0)
 

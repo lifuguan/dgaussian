@@ -21,7 +21,7 @@ from math import ceil
 # torch.autograd.set_detect_anomaly(True)
 import copy
 from torchvision.utils import save_image
-
+from einops import rearrange
 
 def random_crop(data,size=[160,224] ,center=None):
     _,_,_,h, w = data['context']['image'].shape
@@ -102,7 +102,11 @@ class GaussianTrainer(BaseTrainer):
         batch_ = data_shim(data_batch, device=self.device)
         batch = self.model.gaussian_model.data_shim(batch_)
         with torch.no_grad():
-            ret, data_gt = self.model.gaussian_model(batch, self.iteration)
+            features=self.model.gaussian_model.encoder.backbone(batch['context'])
+            features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
+            features = self.model.gaussian_model.encoder.backbone_projection(features)
+            features = rearrange(features, "b v h w c -> b v c h w")
+            ret, data_gt = self.model.gaussian_model(batch, self.iteration,features)
         ret['rgb'].requires_grad_(True)
         coarse_loss = self.rgb_loss(ret, data_gt)
         coarse_loss.backward()     
@@ -117,6 +121,10 @@ class GaussianTrainer(BaseTrainer):
         out_w=224
         row=ceil(h/out_h)
         col=ceil(w/out_w)
+        features=self.model.gaussian_model.encoder.backbone(batch['context'])
+        features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
+        features = self.model.gaussian_model.encoder.backbone_projection(features)
+        features = rearrange(features, "b v h w c -> b v c h w")
         for i in range(row):
             for j in range(col):
                 if i==row-1 and j==col-1:
@@ -128,7 +136,9 @@ class GaussianTrainer(BaseTrainer):
                 else:
                     data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(out_w//2+j*out_w)))  
                 # Run the model.
-                ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
+                if i==0 and j==0:
+                    self.model.gaussian_model.backbone()
+                    ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,features,i,j)
         # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
         # coarse_loss.backward()
                 ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])

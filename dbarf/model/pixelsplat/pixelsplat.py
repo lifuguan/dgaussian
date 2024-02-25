@@ -46,12 +46,11 @@ class PixelSplat(nn.Module):
         
         self.data_shim = get_data_shim(self.encoder)
 
-    def forward(self, batch, global_step: int,i:int = 3,j:int = 3):  #默认进全图
+    def forward(self, batch, global_step: int,features,i:int = 3,j:int = 3):  #默认进全图
 
         
         _, _, _, h, w = batch["target"]["image"].shape
 
-        features = self.encoder(batch["context"], global_step,None,4,4) #五张图先进去算出feaure
 
         # Run the model.
         for k in range(batch["context"]["image"].shape[1] - 1):

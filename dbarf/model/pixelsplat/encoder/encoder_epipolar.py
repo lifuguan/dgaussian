@@ -122,12 +122,12 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         device = context["image"].device
         b, v, _, h, w = context["image"].shape
 
-        if clip_h==4 and clip_w==4:   #先算feature
-            features = self.backbone(context)
-            features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
-            features = self.backbone_projection(features)
-            features = rearrange(features, "b v h w c -> b v c h w")
-            return features
+        # if clip_h==4 and clip_w==4:   #先算feature
+        #     features = self.backbone(context)
+        #     features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
+        #     features = self.backbone_projection(features)
+        #     features = rearrange(features, "b v h w c -> b v c h w")
+        #     return features
 
         # Run the epipolar transformer.
         if self.cfg.use_epipolar_transformer:
