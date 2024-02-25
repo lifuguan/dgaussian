@@ -120,10 +120,10 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "2",
+                "CUDA_VISIBLE_DEVICES": "3",
                 "PYTHONPATH": "${workspaceFolder}"
             },
-            "name": "train:gaussian",
+            "name": "train:gaussian-LowRes",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/train_gaussian.py",
@@ -134,7 +134,7 @@
                 "+ckpt_path=data/ibrnet/train/out/llff_generalized_room28.pth",
                 "++eval_scenes=[room]",
                 "++num_source_views=7",
-                "++expname=ray_crop_room"
+                "++expname=low_res_room"
             ]
         },
         {

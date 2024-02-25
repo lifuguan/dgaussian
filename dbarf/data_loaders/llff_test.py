@@ -50,9 +50,9 @@ class LLFFTestDataset(Dataset):
         self.node_id_to_idx_list = []
         self.train_view_graphs = []
     
-        # self.image_size = (176, 240)
+        self.image_size = (224, 304)
         # self.image_size = (378, 504)
-        self.image_size = (352, 480)
+        # self.image_size = (352, 480)
         # self.image_size = (320, 448)
         out_w = 448
         self.ratio = 448 / 504

@@ -100,64 +100,21 @@ class GaussianTrainer(BaseTrainer):
             self.state = self.model.switch_state_machine(state='nerf_only')
         self.optimizer.zero_grad()
         batch_ = data_shim(data_batch, device=self.device)
-        # batch = self.model.gaussian_model.data_shim(batch_)
-        with torch.no_grad():
-            batch = self.model.gaussian_model.data_shim(batch_)
-            ret, data_gt = self.model.gaussian_model(batch, self.iteration)
-        ret['rgb'].requires_grad_(True)
+        batch = self.model.gaussian_model.data_shim(batch_)
+        ret, data_gt = self.model.gaussian_model(batch, self.iteration)
         coarse_loss = self.rgb_loss(ret, data_gt)
         coarse_loss.backward()     
-        rgb_pred_grad=ret['rgb'].grad
         
-        
-        #随机裁剪中心
-        # import imageio
-        # rgb=ret['rgb'].cpu().squeeze(0).squeeze(0)
-        _, _, _, h, w = batch["target"]["image"].shape
-        out_h=176
-        out_w=240
-        row=ceil(h/out_h)
-        col=ceil(w/out_w)
-        # features=self.model.gaussian_model.encoder.backbone(batch['context'])
-        # features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
-        # features = self.model.gaussian_model.encoder.backbone_projection(features)
-        # features = rearrange(features, "b v h w c -> b v c h w")
-        # features.retain_graph()
-        for i in range(row):
-            for j in range(col):
-                if i==row-1 and j==col-1:
-                    data_crop,center_h,center_w=random_crop(  batch,size=[out_h,out_w],center=(int(h-out_h//2),int(w-out_w//2)))
-                elif i==row-1:#最后一行
-                    data_crop,center_h,center_w=random_crop(  batch,size=[out_h,out_w],center=(int(h-out_h//2),int(out_w//2+j*out_w)))
-                elif j==col-1:#z最后一列
-                    data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(w-out_w//2)))
-                else:
-                    data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(out_w//2+j*out_w)))  
-                # Run the model.
-                ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
-        # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
-        # coarse_loss.backward()
-                ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])
         self.optimizer.step()
         self.scheduler.step()
-        loss_all = 0
-        loss_dict = {}
-        # compute loss
-        coarse_loss = self.rgb_loss(ret, data_gt)
-        loss_dict['gaussian_loss'] = coarse_loss
-        loss_all += loss_dict['gaussian_loss']
-        # with torch.autograd.detect_anomaly():
-       
 
         if self.config.local_rank == 0 and self.iteration % self.config.n_tensorboard == 0:
-            mse_error = img2mse(ret_patch['rgb'], data_gt_patch['rgb']).item()
+            mse_error = img2mse(ret['rgb'], data_gt['rgb']).item(); psnr = mse2psnr(mse_error)
             self.scalars_to_log['train/coarse-loss'] = mse_error
-            self.scalars_to_log['train/coarse-psnr'] = mse2psnr(mse_error)
-            self.scalars_to_log['loss/final'] = loss_all.item()
+            self.scalars_to_log['train/coarse-psnr'] = psnr
             self.scalars_to_log['loss/rgb_coarse'] = coarse_loss
-            # print(f"corse loss: {mse_error}, psnr: {mse2psnr(mse_error)}")
             self.scalars_to_log['lr/Gaussian'] = self.scheduler.get_last_lr()[0]
-            print(" PSNR: ", mse2psnr(mse_error))
+            print(" PSNR: ", psnr)
         
     def validate(self) -> float:
         self.model.switch_to_eval()
