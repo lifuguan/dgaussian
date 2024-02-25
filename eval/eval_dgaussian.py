@@ -147,7 +147,7 @@ def eval(cfg_dict: DictConfig):
             feat_maps = (all_feat_maps[0][1:, :32, ...], None) if args.coarse_only else \
                         (all_feat_maps[0][1:, :32, ...], all_feat_maps[1][1:, ...])
 
-            pred_inv_depth, pred_rel_poses, _, _ ,inv_depths_ref_list= model.correct_poses(
+            pred_inv_depth, pred_rel_poses, _, _ = model.correct_poses(
                 fmaps=None,
                 target_image=data['rgb'].cuda(),
                 ref_imgs=data['src_rgbs'].cuda(),
@@ -156,14 +156,14 @@ def eval(cfg_dict: DictConfig):
                 min_depth=data['depth_range'][0][0],
                 max_depth=data['depth_range'][0][1],
                 scaled_shape=data['scaled_shape'])
-            for i,(inv_depths_ref) in enumerate(inv_depths_ref_list):
-                inv_depths_ref = inv_depths_ref.squeeze(0).squeeze(0).detach().cpu()
-                pred_depth = inv2depth(inv_depths_ref)
-                imageio.imwrite(os.path.join(out_scene_dir, f'{i}_gray.png'),
-                            (pred_depth.numpy() * 255.).astype(np.uint8))
-                pred_depth = colorize(pred_depth, cmap_name='jet', append_cbar=True)
-                imageio.imwrite(os.path.join(out_scene_dir, f'ref_color_depth{i}.png'),
-                            (pred_depth.numpy() * 255.).astype(np.uint8))
+            # for i,(inv_depths_ref) in enumerate(inv_depths_ref_list):
+            #     inv_depths_ref = inv_depths_ref.squeeze(0).squeeze(0).detach().cpu()
+            #     pred_depth = inv2depth(inv_depths_ref)
+            #     imageio.imwrite(os.path.join(out_scene_dir, f'{i}_gray.png'),
+            #                 (pred_depth.numpy() * 255.).astype(np.uint8))
+            #     pred_depth = colorize(pred_depth, cmap_name='jet', append_cbar=True)
+            #     imageio.imwrite(os.path.join(out_scene_dir, f'ref_color_depth{i}.png'),
+            #                 (pred_depth.numpy() * 255.).astype(np.uint8))
 
             pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
             pred_depth = inv2depth(pred_inv_depth)

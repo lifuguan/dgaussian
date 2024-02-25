@@ -121,5 +121,6 @@ def config_parser():
                         help='will take every 1/N images as LLFF test set, paper uses 8')
      parser.add_argument("--visdom_server", type=str, default="localhost")
      parser.add_argument("--visdom_port", type=int, default=9000)
+     parser.add_argument("--render_video",type=bool, default=False)
 
      return parser

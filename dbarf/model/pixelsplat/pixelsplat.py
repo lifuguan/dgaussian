@@ -46,16 +46,18 @@ class PixelSplat(nn.Module):
         
         self.data_shim = get_data_shim(self.encoder)
 
-    def forward(self, batch, global_step: int):
+    def forward(self, batch, global_step: int,i:int = 3,j:int = 3):  #默认进全图
 
         
         _, _, _, h, w = batch["target"]["image"].shape
 
+        features = self.encoder(batch["context"], global_step,None,4,4) #五张图先进去算出feaure
+
         # Run the model.
-        for i in range(batch["context"]["image"].shape[1] - 1):
-            tmp_batch = self.batch_cut(batch["context"],i)
-            tmp_gaussians = self.encoder(tmp_batch, global_step, False)
-            if i == 0:
+        for k in range(batch["context"]["image"].shape[1] - 1):
+            tmp_batch = self.batch_cut(batch["context"],k)
+            tmp_gaussians = self.encoder(tmp_batch, global_step,features[:,k:k+2,:,:,:],i,j,False) #默认进全图即i=3，j=3
+            if k == 0:
                 gaussians: Gaussians = tmp_gaussians
             else:
                 gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)

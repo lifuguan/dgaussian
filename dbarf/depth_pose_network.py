@@ -277,7 +277,7 @@ class DepthPoseNet(nn.Module):
         if not self.training:
             return inv_depth_predictions[-1], \
                    torch.stack(pose_predictions[-1], dim=1).view(target_image.shape[0], len(ref_imgs), 6), fmap1 ,\
-                    inv_depth_refs_list_up            #(b, n, 6)
+                              #(b, n, 6)
         
         return inv_depth_predictions, \
                torch.stack([torch.stack(poses_ref, dim=1) for poses_ref in pose_predictions], dim=2), fmap1 #(b, n, iters, 6)

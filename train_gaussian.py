@@ -34,13 +34,13 @@ def random_crop(data,size=[160,224] ,center=None):
     else:
         center_h = np.random.randint(low=out_h // 2 + 1, high=h - out_h // 2 - 1)
         center_w = np.random.randint(low=out_w // 2 + 1, high=w - out_w // 2 - 1)
-    batch['context']['image'] = batch['context']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
+    # batch['context']['image'] = batch['context']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
     batch['target']['image'] = batch['target']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
 
-    batch['context']['intrinsics'][:,:,0,0]=batch['context']['intrinsics'][:,:,0,0]*w/out_w
-    batch['context']['intrinsics'][:,:,1,1]=batch['context']['intrinsics'][:,:,1,1]*h/out_h
-    batch['context']['intrinsics'][:,:,0,2]=(batch['context']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
-    batch['context']['intrinsics'][:,:,1,2]=(batch['context']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
+    # batch['context']['intrinsics'][:,:,0,0]=batch['context']['intrinsics'][:,:,0,0]*w/out_w
+    # batch['context']['intrinsics'][:,:,1,1]=batch['context']['intrinsics'][:,:,1,1]*h/out_h
+    # batch['context']['intrinsics'][:,:,0,2]=(batch['context']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
+    # batch['context']['intrinsics'][:,:,1,2]=(batch['context']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
 
     batch['target']['intrinsics'][:,:,0,0]=batch['target']['intrinsics'][:,:,0,0]*w/out_w
     batch['target']['intrinsics'][:,:,1,1]=batch['target']['intrinsics'][:,:,1,1]*h/out_h
@@ -107,6 +107,8 @@ class GaussianTrainer(BaseTrainer):
         coarse_loss = self.rgb_loss(ret, data_gt)
         coarse_loss.backward()     
         rgb_pred_grad=ret['rgb'].grad
+        
+        
         #随机裁剪中心
         # import imageio
         # rgb=ret['rgb'].cpu().squeeze(0).squeeze(0)
@@ -126,7 +128,7 @@ class GaussianTrainer(BaseTrainer):
                 else:
                     data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(out_w//2+j*out_w)))  
                 # Run the model.
-                ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration)
+                ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
         # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
         # coarse_loss.backward()
                 ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])

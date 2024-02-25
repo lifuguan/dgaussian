@@ -25,29 +25,18 @@
             "console": "integratedTerminal"
         },
         {
-            "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
-            },
+            "env": {"CUDA_VISIBLE_DEVICES": "0",},
             "name": "train:dbarf",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/train_dbarf.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": [
-                "--config",
-                "configs/pretrain_dbarf.txt",
-                "--rootdir",
-                "data/ibrnet/train",
-                "--ckpt_path",
-                "model_zoo/dbarf_model_200000.pth",
-                "--expname",
-                "test"
-            ]
+            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "/home/gyy/Downloads/dgaussin_train/dgaussian/checkpoint/dbarf_model_200000.pth", "--expname", "waymo"]
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "4",
+                "CUDA_VISIBLE_DEVICES": "0",
             },
             "name": "test:dbarf",
             "type": "python",
@@ -61,9 +50,33 @@
                 "--rootdir",
                 "data/ibrnet/train",
                 "--ckpt_path",
-                "model_zoo/dgaussian_resnet_2.pth",
-                "--eval_scenes",
-                "room"
+                "/home/gyy/Downloads/dgaussin_train/dgaussian/checkpoint/dbarf_model_200000.pth",
+                // "--eval_scenes",
+                // "waymo"
+            ]
+            // "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "room"]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+            },
+            "name": "train:ibrnet",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_ibrnet.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config",
+                "configs/pretrain_dbarf.txt",
+                "--rootdir",
+                "data/ibrnet/train",
+                "--ckpt_path",
+                "/home/gyy/Downloads/dgaussin_train/dgaussian/checkpoint/dbarf_model_200000.pth",
+                // "/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/waymo/model/model_025000.pth",
+                "--expname", "waymo_ibrnet_1"
+                // "--eval_scenes",
+                // "waymo"
             ]
             // "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "room"]
         },

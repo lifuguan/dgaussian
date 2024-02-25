@@ -5,14 +5,14 @@ render_stride = 2
 distributed = False
 enable_tensorboard = True
 enable_visdom = False
-
+render_video =False
 # ckpt_path = 
 
 ## dataset
-train_dataset = llff+ibrnet_collected
+train_dataset = waymo
 dataset_weights = [0.5, 0.5]
-eval_dataset = llff_test
-eval_scenes = [trex, fern, flower, leaves, room, fortress, horns, orchids]
+eval_dataset = waymo
+eval_scenes = [019]
 num_source_views = 5
 selection_rule = pose
 
