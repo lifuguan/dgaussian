@@ -121,10 +121,11 @@ class GaussianTrainer(BaseTrainer):
         out_w=224
         row=ceil(h/out_h)
         col=ceil(w/out_w)
-        features=self.model.gaussian_model.encoder.backbone(batch['context'])
-        features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
-        features = self.model.gaussian_model.encoder.backbone_projection(features)
-        features = rearrange(features, "b v h w c -> b v c h w")
+        # features=self.model.gaussian_model.encoder.backbone(batch['context'])
+        # features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
+        # features = self.model.gaussian_model.encoder.backbone_projection(features)
+        # features = rearrange(features, "b v h w c -> b v c h w")
+        # features.retain_graph()
         for i in range(row):
             for j in range(col):
                 if i==row-1 and j==col-1:
@@ -136,6 +137,10 @@ class GaussianTrainer(BaseTrainer):
                 else:
                     data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(out_w//2+j*out_w)))  
                 # Run the model.
+                features=self.model.gaussian_model.encoder.backbone(batch['context'])
+                features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
+                features = self.model.gaussian_model.encoder.backbone_projection(features)
+                features = rearrange(features, "b v h w c -> b v c h w")
                 ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,features,i,j)
         # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
         # coarse_loss.backward()

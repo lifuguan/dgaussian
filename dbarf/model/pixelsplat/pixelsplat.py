@@ -51,6 +51,7 @@ class PixelSplat(nn.Module):
         
         _, _, _, h, w = batch["target"]["image"].shape
 
+        # features = self.encoder(batch["context"], global_step,None,4,4) #五张图先进去算出feaure
 
         # Run the model.
         for k in range(batch["context"]["image"].shape[1] - 1):
