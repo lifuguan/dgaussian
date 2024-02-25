@@ -34,7 +34,7 @@ class BackboneDino(Backbone[BackboneDinoCfg]):
         # Compute features from the DINO-pretrained resnet50.
         resnet_features = self.resnet_backbone(context)
 
-        return resnet_features.float()
+        return resnet_features.to(torch.float)
         # return resnet_features + local_tokens + global_token
 
     @property

@@ -100,13 +100,10 @@ class GaussianTrainer(BaseTrainer):
             self.state = self.model.switch_state_machine(state='nerf_only')
         self.optimizer.zero_grad()
         batch_ = data_shim(data_batch, device=self.device)
-        batch = self.model.gaussian_model.data_shim(batch_)
+        # batch = self.model.gaussian_model.data_shim(batch_)
         with torch.no_grad():
-            features=self.model.gaussian_model.encoder.backbone(batch['context'])
-            features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
-            features = self.model.gaussian_model.encoder.backbone_projection(features)
-            features = rearrange(features, "b v h w c -> b v c h w")
-            ret, data_gt = self.model.gaussian_model(batch, self.iteration,features)
+            batch = self.model.gaussian_model.data_shim(batch_)
+            ret, data_gt = self.model.gaussian_model(batch, self.iteration)
         ret['rgb'].requires_grad_(True)
         coarse_loss = self.rgb_loss(ret, data_gt)
         coarse_loss.backward()     
@@ -137,11 +134,7 @@ class GaussianTrainer(BaseTrainer):
                 else:
                     data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(out_w//2+j*out_w)))  
                 # Run the model.
-                features=self.model.gaussian_model.encoder.backbone(batch['context'])
-                features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
-                features = self.model.gaussian_model.encoder.backbone_projection(features)
-                features = rearrange(features, "b v h w c -> b v c h w")
-                ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,features,i,j)
+                ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
         # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
         # coarse_loss.backward()
                 ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])
@@ -193,11 +186,11 @@ def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='',
     batch = model.gaussian_model.data_shim(batch)
 
 
-    features=  model.gaussian_model.encoder.backbone(batch['context'])
-    features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
-    features = model.gaussian_model.encoder.backbone_projection(features)
-    features = rearrange(features, "b v h w c -> b v c h w")
-    ret, data_gt = model.gaussian_model(batch, global_step,features)
+    # features=  model.gaussian_model.encoder.backbone(batch['context'])
+    # features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
+    # features = model.gaussian_model.encoder.backbone_projection(features)
+    # features = rearrange(features, "b v h w c -> b v c h w")
+    ret, data_gt = model.gaussian_model(batch, global_step)
         
 
     average_im = batch['context']['image'].cpu().mean(dim=(0, 1))

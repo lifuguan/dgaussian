@@ -46,25 +46,54 @@ class PixelSplat(nn.Module):
         
         self.data_shim = get_data_shim(self.encoder)
 
-    def forward(self, batch, global_step: int,features,i:int = 3,j:int = 3):  #默认进全图
+    def setup_optimizer(self):
+        # self.optimizer = torch.optim.Adam([
+        #     dict(params=self.model.gaussian_model.parameters(),lr=self.config.lrate_mlp)
+        # ])
 
-        
+        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer,
+        #                                                  step_size=self.config.lrate_decay_steps,
+        #                                                  gamma=self.config.lrate_decay_factor)
+
+        self.optimizer = torch.optim.Adam(self.model.gaussian_model.parameters(), lr=self.config.optimizer.lr)
+        warm_up_steps = self.config.optimizer.warm_up_steps
+        self.scheduler = torch.optim.lr_scheduler.LinearLR(self.optimizer,
+                                                        1 / warm_up_steps,
+                                                        1,
+                                                        total_iters=warm_up_steps)
+
+
+
+    def forward(self, batch, global_step: int,i:int = 3,j:int = 3):  #默认进全图
+
+        features=None
         _, _, _, h, w = batch["target"]["image"].shape
+        if i!=3 and j!=3:  #进行crop
+            features = self.encoder(batch["context"], global_step,None,4,4) #五张图先进去算出feaure
 
-        # features = self.encoder(batch["context"], global_step,None,4,4) #五张图先进去算出feaure
-
-        # Run the model.
-        for k in range(batch["context"]["image"].shape[1] - 1):
-            tmp_batch = self.batch_cut(batch["context"],k)
-            tmp_gaussians = self.encoder(tmp_batch, global_step,features[:,k:k+2,:,:,:],i,j,False) #默认进全图即i=3，j=3
-            if k == 0:
-                gaussians: Gaussians = tmp_gaussians
-            else:
-                gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
-                gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
-                gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
-                gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
-            
+            # Run the model.
+            for k in range(batch["context"]["image"].shape[1] - 1):
+                tmp_batch = self.batch_cut(batch["context"],k)
+                tmp_gaussians = self.encoder(tmp_batch, global_step,features[:,k:k+2,:,:,:],i,j,False) #默认进全图即i=3，j=3
+                if k == 0:
+                    gaussians: Gaussians = tmp_gaussians
+                else:
+                    gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
+                    gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
+                    gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
+                    gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
+        else:
+            # Run the model.
+            for k in range(batch["context"]["image"].shape[1] - 1):
+                tmp_batch = self.batch_cut(batch["context"],k)
+                tmp_gaussians = self.encoder(tmp_batch, global_step,features,i,j,False) #默认进全图即i=3，j=3
+                if k == 0:
+                    gaussians: Gaussians = tmp_gaussians
+                else:
+                    gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
+                    gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
+                    gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
+                    gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
         # gaussians = self.encoder(batch['context'], global_step, False)
             
         output = self.decoder.forward(
