@@ -114,8 +114,8 @@ class GaussianTrainer(BaseTrainer):
         # import imageio
         # rgb=ret['rgb'].cpu().squeeze(0).squeeze(0)
         _, _, _, h, w = batch["target"]["image"].shape
-        out_h=160
-        out_w=224
+        out_h=176
+        out_w=240
         row=ceil(h/out_h)
         col=ceil(w/out_w)
         # features=self.model.gaussian_model.encoder.backbone(batch['context'])
@@ -157,6 +157,7 @@ class GaussianTrainer(BaseTrainer):
             self.scalars_to_log['loss/rgb_coarse'] = coarse_loss
             # print(f"corse loss: {mse_error}, psnr: {mse2psnr(mse_error)}")
             self.scalars_to_log['lr/Gaussian'] = self.scheduler.get_last_lr()[0]
+            print(" PSNR: ", mse2psnr(mse_error))
         
     def validate(self) -> float:
         self.model.switch_to_eval()
@@ -225,7 +226,7 @@ def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='',
 @hydra.main(
     version_base=None,
     config_path="./configs",
-    config_name="pretrain_dgaussian",
+    config_name="finetune_dgaussian_stable",
 )
 
 def train(cfg_dict: DictConfig):

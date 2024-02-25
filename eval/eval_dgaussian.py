@@ -183,12 +183,7 @@ def eval(cfg_dict: DictConfig):
             #     data['context']['extrinsics'] = context_poses.unsqueeze(0)
             batch_ = data_shim(data, device="cuda:0")
             batch = gaussian_model.data_shim(batch_)   
-            features=gaussian_model.encoder.backbone(batch['context'])
-            features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
-            features = gaussian_model.encoder.backbone_projection(features)
-            features = rearrange(features, "b v h w c -> b v c h w")    
-            output, gt_rgb = gaussian_model(batch, i,features)
-            
+            output, gt_rgb = gaussian_model(batch, i)
             pred_depth_gaussins=output['depth'].cpu().squeeze(0).squeeze(0)
 
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth_2.png'),

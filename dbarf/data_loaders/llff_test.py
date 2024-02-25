@@ -52,7 +52,8 @@ class LLFFTestDataset(Dataset):
     
         # self.image_size = (176, 240)
         # self.image_size = (378, 504)
-        self.image_size = (320, 448)
+        self.image_size = (352, 480)
+        # self.image_size = (320, 448)
         out_w = 448
         self.ratio = 448 / 504
         self.h, self.w = int(self.ratio*378), int(out_w)
@@ -173,7 +174,6 @@ class LLFFTestDataset(Dataset):
             nearest_pose_ids = np.array([self.nearby_view_id])
 
         nearest_pose_ids = np.random.choice(nearest_pose_ids, min(num_select, len(nearest_pose_ids)), replace=False)
-        print(f'nearest pose ids: {nearest_pose_ids}')
 
         assert id_render not in nearest_pose_ids
         # occasionally include input image

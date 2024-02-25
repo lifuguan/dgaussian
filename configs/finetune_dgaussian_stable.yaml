@@ -69,7 +69,7 @@ feat_loss_scale : 1e1
 
 ### CONSOLE AND TENSORBOARD
 n_validation : 500
-n_tensorboard : 50
+n_tensorboard : 2
 n_checkpoint : 5000
 visdom_port : 9000
 
