@@ -65,7 +65,8 @@ class Transformer(nn.Module):
             )
 
     def forward(self, x, z=None, **kwargs):
-        for attn, ff in self.layers:
-            x = attn(x, z=z) + x
-            x = ff(x, **kwargs) + x
+        a = 1
+        for i, layer in enumerate(self.layers):
+            x = layer[0](x, z=z) + x
+            x = layer[1](x, **kwargs) + x
         return x

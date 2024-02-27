@@ -35,17 +35,17 @@ def random_crop(data,size=[160,224] ,center=None):
         center_h = np.random.randint(low=out_h // 2 + 1, high=h - out_h // 2 - 1)
         center_w = np.random.randint(low=out_w // 2 + 1, high=w - out_w // 2 - 1)
     # batch['context']['image'] = batch['context']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
-    batch['target']['image'] = batch['target']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
+    # batch['target']['image'] = batch['target']['image'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
 
     # batch['context']['intrinsics'][:,:,0,0]=batch['context']['intrinsics'][:,:,0,0]*w/out_w
     # batch['context']['intrinsics'][:,:,1,1]=batch['context']['intrinsics'][:,:,1,1]*h/out_h
     # batch['context']['intrinsics'][:,:,0,2]=(batch['context']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
     # batch['context']['intrinsics'][:,:,1,2]=(batch['context']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
 
-    batch['target']['intrinsics'][:,:,0,0]=batch['target']['intrinsics'][:,:,0,0]*w/out_w
-    batch['target']['intrinsics'][:,:,1,1]=batch['target']['intrinsics'][:,:,1,1]*h/out_h
-    batch['target']['intrinsics'][:,:,0,2]=(batch['target']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
-    batch['target']['intrinsics'][:,:,1,2]=(batch['target']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
+    # batch['target']['intrinsics'][:,:,0,0]=batch['target']['intrinsics'][:,:,0,0]*w/out_w
+    # batch['target']['intrinsics'][:,:,1,1]=batch['target']['intrinsics'][:,:,1,1]*h/out_h
+    # batch['target']['intrinsics'][:,:,0,2]=(batch['target']['intrinsics'][:,:,0,2]*w-center_w+out_w // 2)/out_w
+    # batch['target']['intrinsics'][:,:,1,2]=(batch['target']['intrinsics'][:,:,1,2]*h-center_h+out_h // 2)/out_h
 
 
 
@@ -99,10 +99,10 @@ class GaussianTrainer(BaseTrainer):
         if self.iteration == 0:
             self.state = self.model.switch_state_machine(state='nerf_only')
         self.optimizer.zero_grad()
-        batch_ = data_shim(data_batch, device=self.device)
         # batch = self.model.gaussian_model.data_shim(batch_)
         with torch.no_grad():
-            batch = self.model.gaussian_model.data_shim(batch_)
+            batch = data_shim(data_batch, device=self.device)
+            batch = self.model.gaussian_model.data_shim(batch)
             ret, data_gt = self.model.gaussian_model(batch, self.iteration)
         ret['rgb'].requires_grad_(True)
         coarse_loss = self.rgb_loss(ret, data_gt)
@@ -134,9 +134,13 @@ class GaussianTrainer(BaseTrainer):
                 else:
                     data_crop,center_h,center_w=random_crop( batch,size=[out_h,out_w],center=(int(out_h//2+i*out_h),int(out_w//2+j*out_w)))  
                 # Run the model.
-                ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
+                if i==0 and j==0:
+                    ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
+                else:
+                    ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
         # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
         # coarse_loss.backward()
+                ret_patch['rgb']=ret_patch['rgb'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
                 ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])
         self.optimizer.step()
         self.scheduler.step()
@@ -150,7 +154,7 @@ class GaussianTrainer(BaseTrainer):
        
 
         if self.config.local_rank == 0 and self.iteration % self.config.n_tensorboard == 0:
-            mse_error = img2mse(ret_patch['rgb'], data_gt_patch['rgb']).item()
+            mse_error = img2mse(ret['rgb'], data_gt['rgb']).item()
             self.scalars_to_log['train/coarse-loss'] = mse_error
             self.scalars_to_log['train/coarse-psnr'] = mse2psnr(mse_error)
             self.scalars_to_log['loss/final'] = loss_all.item()

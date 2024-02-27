@@ -122,7 +122,7 @@ class EncoderEpipolar(Encoder[EncoderEpipolarCfg]):
         device = context["image"].device
         b, v, _, h, w = context["image"].shape
 
-        if clip_h==3 and clip_w==3:  #全图
+        if clip_h==3 and clip_w==3 and features is None:  #全图
             # Encode the context images.
             features = self.backbone(context)
             features = rearrange(features, "b v c h w -> b v h w c")

@@ -74,7 +74,7 @@ class PixelSplat(nn.Module):
             # Run the model.
             for k in range(batch["context"]["image"].shape[1] - 1):
                 tmp_batch = self.batch_cut(batch["context"],k)
-                tmp_gaussians = self.encoder(tmp_batch, global_step,features[:,k:k+2,:,:,:],i,j,False) #默认进全图即i=3，j=3
+                tmp_gaussians = self.encoder(tmp_batch, global_step,features[:,k:k+2,:,:,:],i,j,True) #默认进全图即i=3，j=3
                 if k == 0:
                     gaussians: Gaussians = tmp_gaussians
                 else:
@@ -82,11 +82,31 @@ class PixelSplat(nn.Module):
                     gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
                     gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
                     gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
+            # if gaussian_last!=None:
+            #     gaussians.covariances = torch.cat([gaussians.covariances, gaussian_last.covariances], dim=1)
+            #     gaussians.means = torch.cat([gaussians.means, gaussian_last.means], dim=1)
+            #     gaussians.harmonics = torch.cat([gaussians.harmonics, gaussian_last.harmonics], dim=1)
+            #     gaussians.opacities = torch.cat([gaussians.opacities, gaussian_last.opacities], dim=1)
+            # gaussians = gaussians.to(torch.bfloat16)
+            output = self.decoder.forward(
+            gaussians,
+            batch["target"]["extrinsics"],
+            batch["target"]["intrinsics"],
+            batch["target"]["near"],
+            batch["target"]["far"],
+            (h, w),
+            depth_mode='depth'
+            )
+            
+            ret = {'rgb': output.color, 'depth': output.depth}
+            target_gt = {'rgb': batch["target"]["image"]}
+            return ret, target_gt
         else:
+            features = self.encoder(batch["context"], global_step,None,4,4)
             # Run the model.
             for k in range(batch["context"]["image"].shape[1] - 1):
                 tmp_batch = self.batch_cut(batch["context"],k)
-                tmp_gaussians = self.encoder(tmp_batch, global_step,features,i,j,False) #默认进全图即i=3，j=3
+                tmp_gaussians = self.encoder(tmp_batch, global_step,features[:,k:k+2,:,:,:],i,j,True) #默认进全图即i=3，j=3
                 if k == 0:
                     gaussians: Gaussians = tmp_gaussians
                 else:
@@ -96,19 +116,19 @@ class PixelSplat(nn.Module):
                     gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
         # gaussians = self.encoder(batch['context'], global_step, False)
             
-        output = self.decoder.forward(
-            gaussians,
-            batch["target"]["extrinsics"],
-            batch["target"]["intrinsics"],
-            batch["target"]["near"],
-            batch["target"]["far"],
-            (h, w),
-            depth_mode='depth'
-        )
-        
-        ret = {'rgb': output.color, 'depth': output.depth}
-        target_gt = {'rgb': batch["target"]["image"]}
-        return ret, target_gt
+            output = self.decoder.forward(
+                gaussians,
+                batch["target"]["extrinsics"],
+                batch["target"]["intrinsics"],
+                batch["target"]["near"],
+                batch["target"]["far"],
+                (h, w),
+                depth_mode='depth'
+            )
+            
+            ret = {'rgb': output.color, 'depth': output.depth}
+            target_gt = {'rgb': batch["target"]["image"]}
+            return ret, target_gt
     
     def batch_cut(self, batch, i):
         return {
