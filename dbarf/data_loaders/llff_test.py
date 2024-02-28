@@ -52,7 +52,7 @@ class LLFFTestDataset(Dataset):
     
         # self.image_size = (176, 240)
         # self.image_size = (378, 504)
-        self.image_size = (320, 448)
+        self.image_size = (352, 480)
         out_w = 448
         self.ratio = 448 / 504
         self.h, self.w = int(self.ratio*378), int(out_w)

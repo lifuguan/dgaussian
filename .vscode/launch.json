@@ -101,7 +101,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "7",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "test:dgaussian-2",
@@ -112,17 +112,15 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/eval",
-                // "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_001000.pth",
-                // "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_002000.pth",
-                "+ckpt_path=./model_zoo/dgaussian_resnet.pth",
+                "+ckpt_path=../pixelsplat_old/outputs/2024-02-27/14-40-01/checkpoints/2100_dgaussian.ckpt",
                 "++eval_scenes=[room]",
-                "++num_source_views=5",
+                "++num_source_views=7",
                 "++expname=test"
             ]
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "7",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "train:gaussian",
@@ -133,10 +131,9 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/train",
-                // "+ckpt_path=model_zoo/dgaussian_resnet.pth",
-                "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_001000.pth",
+                "+ckpt_path=data/ibrnet/train/out/low_res_room/model/model_005000.pth", // 使用低分辨率ft的权重试试
                 "++eval_scenes=[room]",
-                "++num_source_views=5",
+                "++num_source_views=7",
                 "++expname=finetune"
             ]
         },
