@@ -114,8 +114,8 @@ class GaussianTrainer(BaseTrainer):
         # import imageio
         # rgb=ret['rgb'].cpu().squeeze(0).squeeze(0)
         _, _, _, h, w = batch["target"]["image"].shape
-        out_h=160
-        out_w=224
+        out_h=176
+        out_w=240
         row=ceil(h/out_h)
         col=ceil(w/out_w)
         # features=self.model.gaussian_model.encoder.backbone(batch['context'])
@@ -229,7 +229,7 @@ def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='',
 @hydra.main(
     version_base=None,
     config_path="./configs",
-    config_name="pretrain_dgaussian",
+    config_name="finetune_dgaussian_stable",
 )
 
 def train(cfg_dict: DictConfig):

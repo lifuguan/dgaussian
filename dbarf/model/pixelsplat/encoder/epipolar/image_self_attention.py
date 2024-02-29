@@ -64,6 +64,7 @@ class ImageSelfAttention(nn.Module):
         # Append positional information to the tokens.
         _, _, nh, nw = tokens.shape
         if nh<20:
+        if nh<20:
             index= self.index//4   #查看是第几个crop
             self.index=self.index+1
             i=index//2
@@ -81,11 +82,11 @@ class ImageSelfAttention(nn.Module):
         if nh>=20 :
             for i in range(2):
                 for j in range(2):    
-                    tokens_1=tokens[:,:,i*10:(i+1)*10,j*14:(j+1)*14]  
+                    tokens_1=tokens[:,:,i*nh//2:(i+1)*nh//2,j*nw//2:(j+1)*nw//2]
                     tokens_1 = rearrange(tokens_1, "b c nh nw -> b (nh nw) c")
                     tokens_1 = self.transformer.forward(tokens_1)
                     tokens_1 = rearrange(tokens_1, "b (nh nw) c -> b c nh nw", nh=nh//2, nw=nw//2)
-                    tokens[:,:,i*10:(i+1)*10,j*14:(j+1)*14]=tokens_1
+                    tokens[:,:,i*nh//2:(i+1)*nh//2,j*nw//2:(j+1)*nw//2]=tokens_1
         # Resample the tokens back to the original resolution.
         # tokens = rearrange(tokens, "b (nh nw) c -> b c nh nw", nh=nh, nw=nw)
         else:

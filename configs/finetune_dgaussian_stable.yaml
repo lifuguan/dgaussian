@@ -53,8 +53,8 @@ use_pred_pose: False
 use_depth_loss: False
 
 optimizer:
-  lr: 1.5e-4
-  warm_up_steps: 2000
+  lr: 5e-5
+  warm_up_steps: 500
 ### TESTING
 chunk_size : 2000
 
@@ -69,8 +69,8 @@ feat_loss_scale : 1e1
 
 ### CONSOLE AND TENSORBOARD
 n_validation : 500
-n_tensorboard : 50
-n_checkpoint : 5000
+n_tensorboard : 5
+n_checkpoint : 200
 visdom_port : 9000
 
 ### evaluation options

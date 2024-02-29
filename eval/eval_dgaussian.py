@@ -167,20 +167,6 @@ def eval(cfg_dict: DictConfig):
 
             pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
             pred_depth = inv2depth(pred_inv_depth)
-            # pred_depth_0 = inv2depth(pred_inv_depth[0])
-            # pred_depth_1 = inv2depth(pred_inv_depth[1])    #b 1 h w
-            # pred_depth_2 = inv2depth(pred_inv_depth[2])
-            # pred_depth_3 = inv2depth(pred_inv_depth[3])
-            # pred_depth_4 = inv2depth(pred_inv_depth[4])
-            # pred_depth_5 = inv2depth(pred_inv_depth[5])
-            # pred_depth=torch.cat(pred_depth_0,pred_depth_1,pred_depth_2,pred_depth_3,pred_depth_4,pred_depth_5,dim=1)
-            # batch['context']['depth'] = pred_depth[:-2]
-            # batch['target']['depth']=pred_depth[-1]
-            # if True:
-            #     num_views = data['src_cameras'].shape[1]
-            #     target_pose = data['camera'][0,-16:].reshape(-1, 4, 4).repeat(num_views, 1, 1).to("cuda:0")
-            #     context_poses = projector.get_train_poses(target_pose, pred_rel_poses)
-            #     data['context']['extrinsics'] = context_poses.unsqueeze(0)
             batch_ = data_shim(data, device="cuda:0")
             batch = gaussian_model.data_shim(batch_)   
             output, gt_rgb = gaussian_model(batch, i)
