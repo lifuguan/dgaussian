@@ -4,7 +4,7 @@ __pycache__/
 data
 model_zoo
 outputs
-
+pretrain_ibrent
 
 pic_006
 pic_008
@@ -12,3 +12,4 @@ pic_113
 pic_168
 pic_241
 pic_419
+homework_least_square.py

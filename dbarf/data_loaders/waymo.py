@@ -20,12 +20,37 @@ import torch
 import sys
 sys.path.append('../')
 from torch.utils.data import Dataset
-from .data_utils import get_nearby_view_ids, loader_resize, random_crop, get_nearest_pose_ids
+from .data_utils import get_nearby_view_ids, random_crop, get_nearest_pose_ids
 from .llff_data_utils import load_llff_data, batch_parse_llff_poses
 from ..pose_util import PoseInitializer
 
 import random
 from .base_utils import downsample_gaussian_blur
+
+
+
+def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
+    h, w = rgb.shape[:2]
+    out_h, out_w = size[0], size[1]
+    intrinsics = camera[2:18].reshape(4, 4)
+    src_intrinsics = src_cameras[:, 2:18].reshape(-1, 4, 4)
+    if out_w >= w or out_h >= h:
+        return rgb, camera, src_rgbs, src_cameras, intrinsics[..., :3, :3], src_intrinsics[..., :3, :3]
+
+    ratio_y = out_h / h
+    ratio_x = out_w / w
+    camera[0] = out_h
+    camera[1] = out_w
+    camera[2:18] = intrinsics.flatten()
+    src_cameras[:, 0] = out_h
+    src_cameras[:, 1] = out_w
+    src_cameras[:, 2:18] = src_intrinsics.reshape(-1, 16)
+    rgb = cv2.resize(downsample_gaussian_blur(
+                rgb, ratio_y), (out_w, out_h), interpolation=cv2.INTER_LINEAR)
+    src_rgbs = [cv2.resize(downsample_gaussian_blur(
+                src_rgb, ratio_y), (out_w, out_h), interpolation=cv2.INTER_LINEAR) for src_rgb in src_rgbs]
+    src_rgbs = np.stack(src_rgbs, axis=0)
+    return rgb, camera, src_rgbs, src_cameras, intrinsics[..., :3, :3], src_intrinsics[..., :3, :3]
 
 class WaymoStaticDataset(Dataset):
     ORIGINAL_SIZE = [[1280, 1920], [1280, 1920], [1280, 1920], [884, 1920], [884, 1920]]
@@ -61,8 +86,8 @@ class WaymoStaticDataset(Dataset):
         
         
         ############     Wamyo Parameters     ############
-        # self.num_cams, self.camera_list =1, [0]
-        self.num_cams, self.camera_list =3, [1, 0, 2]
+        self.num_cams, self.camera_list =1, [0]
+        # self.num_cams, self.camera_list =3, [1, 0, 2]
         
         self.start_timestep, self.end_timestep = 0, 198
         if len(scenes) > 0:
@@ -88,8 +113,8 @@ class WaymoStaticDataset(Dataset):
             intrinsics, c2w_mats = self.load_calibrations(scene_path)
             
             
-            near_depth = 0.1
-            far_depth = 100.0
+            near_depth = 1
+            far_depth = 100
             
             i_test = i_test[::self.args.llffhold] if mode != 'eval_pose' else []
             i_train = np.array([j for j in np.arange(len(rgb_files)) if
@@ -213,8 +238,8 @@ class WaymoStaticDataset(Dataset):
         rgb = imageio.imread(rgb_file).astype(np.float32) / 255.
         render_pose = self.render_poses[idx]
                 
-        translation = np.array([3, 0, 0])
-        render_pose[:, 3] += np.dot(render_pose[:, :3], translation)
+        # translation = np.array([3, 0, 0])
+        # render_pose[:, 3] += np.dot(render_pose[:, :3], translation)
         
         intrinsics = self.render_intrinsics[idx]
         depth_range = self.render_depth_range[idx]
@@ -228,7 +253,7 @@ class WaymoStaticDataset(Dataset):
         node_id_to_idx = self.node_id_to_idx_list[train_set_id]
 
         img_size = rgb.shape[:2]
-        camera = np.concatenate((list(img_size), intrinsics.flatten(),
+        camera = np.concatenate((list(self.image_size), intrinsics.flatten(),
                                  render_pose.flatten())).astype(np.float32)
 
         if self.mode == 'train':
@@ -288,7 +313,7 @@ class WaymoStaticDataset(Dataset):
             src_extrinsics.append(train_pose)
             src_rgbs.append(src_rgb)
             img_size = src_rgb.shape[:2]
-            src_camera = np.concatenate((list(img_size), train_intrinsics_.flatten(),
+            src_camera = np.concatenate((list(self.image_size), train_intrinsics_.flatten(),
                                          train_pose.flatten())).astype(np.float32)
             src_cameras.append(src_camera)
 
@@ -297,9 +322,10 @@ class WaymoStaticDataset(Dataset):
 
         src_intrinsics, src_extrinsics = np.stack(src_intrinsics, axis=0), np.stack(src_extrinsics, axis=0)
     
-        # pix_rgb, pix_camera, pix_src_rgbs, pix_src_cameras, pix_intrinsics, pix_src_intrinsics = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
-        pix_rgb, camera, pix_src_rgbs, src_cameras, _, _ = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
-        
+        pix_rgb, pix_camera, pix_src_rgbs, pix_src_cameras, pix_intrinsics, pix_src_intrinsics = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
+        # pix_rgb, camera, pix_src_rgbs, src_cameras, _, _ = loader_resize(rgb,camera.copy(),src_rgbs,src_cameras.copy(), size=self.image_size)
+        # pix_rgb = rgb
+        # pix_src_rgbs = src_rgbs
         pix_src_extrinsics = torch.from_numpy(src_extrinsics).float()
         pix_extrinsics = torch.from_numpy(render_pose).unsqueeze(0).float()
         
@@ -328,7 +354,7 @@ class WaymoStaticDataset(Dataset):
                 'camera': torch.from_numpy(camera),
                 'rgb_path': rgb_file,
                 'src_rgbs': torch.from_numpy(pix_src_rgbs[..., :3]),
-                'src_cameras': torch.from_numpy(src_cameras),
+                'src_cameras': torch.from_numpy( src_cameras),
                 'depth_range': depth_range,
                 'idx': idx,
                 'scaled_shape': (0, 0), # (378, 504)

@@ -183,11 +183,7 @@ def eval(cfg_dict: DictConfig):
             #     data['context']['extrinsics'] = context_poses.unsqueeze(0)
             batch_ = data_shim(data, device="cuda:0")
             batch = gaussian_model.data_shim(batch_)   
-            features=gaussian_model.encoder.backbone(batch['context'])
-            features = rearrange(features, "b v c h w -> b v h w c").to(torch.float)
-            features = gaussian_model.encoder.backbone_projection(features)
-            features = rearrange(features, "b v h w c -> b v c h w")    
-            output, gt_rgb = gaussian_model(batch, i,features)
+            output, gt_rgb = gaussian_model(batch, i)
             
             pred_depth_gaussins=output['depth'].cpu().squeeze(0).squeeze(0)
 
@@ -208,7 +204,7 @@ def eval(cfg_dict: DictConfig):
             imageio.imwrite(os.path.join(out_scene_dir, '{}_err_map_coarse.png'.format(file_id)),
                             coarse_err_map_colored)
             coarse_pred_rgb_np = torch.from_numpy(np.clip(coarse_pred_rgb.numpy()[None, ...], a_min=0., a_max=1.)).cuda()
-            gt_rgb_np = torch.from_numpy(gt_rgb.numpy()[None, ...]).cuda()
+            gt_rgb_np = torch.from_numpy(np.clip(gt_rgb.numpy()[None, ...], a_min=0., a_max=1.)).cuda()
 
             coarse_lpips = img2lpips(lpips_loss, gt_rgb_np.permute(0, 3, 1, 2), coarse_pred_rgb_np.permute(0, 3, 1, 2))
             coarse_ssim = img2ssim(gt_rgb_np.permute(0, 3, 1, 2), coarse_pred_rgb_np.permute(0, 3, 1, 2))

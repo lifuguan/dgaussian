@@ -63,7 +63,7 @@ class ImageSelfAttention(nn.Module):
 
         # Append positional information to the tokens.
         _, _, nh, nw = tokens.shape
-        if nh!=20:
+        if nh<20:
             index= self.index//4   #查看是第几个crop
             self.index=self.index+1
             i=index//2
@@ -75,11 +75,10 @@ class ImageSelfAttention(nn.Module):
             self.index=0
             xy, _ = sample_image_grid((nh, nw), device=image.device)
             xy = self.positional_encoding.forward(xy)
-        tokens = tokens + rearrange(xy, "nh nw c -> c nh nw")
 
         # Put the tokens through a transformer.
         _, _, nh, nw = tokens.shape
-        if nh==20 and nw==28:
+        if nh>=20 :
             for i in range(2):
                 for j in range(2):    
                     tokens_1=tokens[:,:,i*10:(i+1)*10,j*14:(j+1)*14]  

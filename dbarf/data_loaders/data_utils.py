@@ -137,10 +137,10 @@ def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
 
     ratio_y = out_h / h
     ratio_x = out_w / w
-    intrinsics[:1, :1] *= ratio_y
-    src_intrinsics[:, :1, :1] *= ratio_y
-    intrinsics[1:2, 1:2] *= ratio_x
-    src_intrinsics[:, 1:2, 1:2] *= ratio_x
+    # intrinsics[:1, :1] *= ratio_y
+    # src_intrinsics[:, :1, :1] *= ratio_y
+    # intrinsics[1:2, 1:2] *= ratio_x
+    # src_intrinsics[:, 1:2, 1:2] *= ratio_x
     camera[0] = out_h
     camera[1] = out_w
     camera[2:18] = intrinsics.flatten()
