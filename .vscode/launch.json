@@ -101,7 +101,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "3",
+                "CUDA_VISIBLE_DEVICES": "7",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "test:dgaussian-2",
@@ -112,10 +112,12 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/eval",
-                "+ckpt_path=data/ibrnet/train/out/ray_crop_room/model/model_004500.pth",
-                "++eval_scenes=[room]",
+                "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",
+                // "+ckpt_path=./model_zoo/dgaussian_resnet.pth",
+                "++eval_datasets=llff_test",
+                "++eval_scenes=[fortress]",
                 "++num_source_views=7",
-                "++expname=test"
+                "++expname=dgaussian_llff_generalized"
             ]
         },
         {

@@ -86,7 +86,7 @@ class PixelSplat(nn.Module):
             # Run the model.
             for k in range(batch["context"]["image"].shape[1] - 1):
                 tmp_batch = self.batch_cut(batch["context"],k)
-                tmp_gaussians = self.encoder(tmp_batch, global_step,features,i,j,False) #默认进全图即i=3，j=3
+                tmp_gaussians = self.encoder(tmp_batch, global_step,features,i,j,True) #默认进全图即i=3，j=3
                 if k == 0:
                     gaussians: Gaussians = tmp_gaussians
                 else:
