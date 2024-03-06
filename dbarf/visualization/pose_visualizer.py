@@ -129,19 +129,19 @@ def visualize_cameras(vis, step, poses=[], cam_depth=0.5, colors=["blue", "magen
             ))
     
     # send data to visdom
-    # vis._send(dict(
-    #     data=data,
-    #     win="poses",
-    #     eid=win_name,
-    #     layout=dict(
-    #         title="({})".format(step),
-    #         autosize=True,
-    #         margin=dict(l=30,r=30,b=30,t=30,),
-    #         showlegend=False,
-    #         yaxis=dict(
-    #             scaleanchor="x",
-    #             scaleratio=1,
-    #         )
-    #     ),
-    #     opts=dict(title="{} poses ({})".format(win_name, step),),
-    # ))
+    vis._send(dict(
+        data=data,
+        win="poses",
+        eid=win_name,
+        layout=dict(
+            title="({})".format(step),
+            autosize=True,
+            margin=dict(l=30,r=30,b=30,t=30,),
+            showlegend=False,
+            yaxis=dict(
+                scaleanchor="x",
+                scaleratio=1,
+            )
+        ),
+        opts=dict(title="{} poses ({})".format(win_name, step),),
+    ))

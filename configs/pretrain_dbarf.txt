@@ -6,11 +6,12 @@ distributed = False
 enable_tensorboard = True
 enable_visdom = False
 render_video =False
-# ckpt_path = 
+
 
 ## dataset
 train_dataset = waymo
-dataset_weights = [0.5, 0.5]
+train_scenes = [003]
+dataset_weights = [1]
 eval_dataset = waymo
 eval_scenes = [003]
 num_source_views = 5
@@ -27,6 +28,9 @@ lrate_decay_pose_steps = 50000
 coarse_only = True
 coarse_feat_dim = 64 # original=32
 
+no_load_opt = True
+no_load_scheduler = True
+
 ### TESTING
 chunk_size = 2000
 
@@ -39,5 +43,5 @@ white_bkgd = False
 ### CONSOLE AND TENSORBOARD
 n_validation = 2000
 n_tensorboard = 100
-n_checkpoint = 5000
+n_checkpoint = 500
 visdom_port = 9000

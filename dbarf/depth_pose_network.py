@@ -8,7 +8,6 @@ from dbarf.optimizer import BasicUpdateBlockPose, BasicUpdateBlockDepth, DepthHe
 from dbarf.pose_util import Pose
 from dbarf.model.feature_network import ResNetEncoder
 from dbarf.base.functools import partial
-# from pytorch3d.transforms import rotation_6d_to_matrix,matrix_to_rotation_6d
 
 
 class DepthPoseNet(nn.Module):
@@ -78,7 +77,7 @@ class DepthPoseNet(nn.Module):
         ref_cam = Camera(K=ref_K.float(), Twc=pose).scaled(scale_factor).to(device)
         
         # Reconstruct world points from target_camera
-        world_points = cam.reconstruct(depth, frame='w')  #1 3 40 56
+        world_points = cam.reconstruct(depth, frame='w')
         
         # Project world points onto reference camera
         ref_coords = ref_cam.project(world_points, frame='w', normalize=True) #(b, h, w,2)
@@ -87,7 +86,7 @@ class DepthPoseNet(nn.Module):
         
         cost = (fmap - fmap_warped)**2
         
-        return cost    #反过来投？拿五个depth往target上投影，作五个cost。
+        return cost
     
     def depth_cost_calc(self, inv_depth, fmap, fmaps_ref, pose_list, K, ref_K, scale_factor):
         cost_list = []
@@ -97,11 +96,6 @@ class DepthPoseNet(nn.Module):
         
         cost = torch.stack(cost_list, dim=1).mean(dim=1)
         return cost
-    def depth_cost_calc_ref(self, inv_depth, fmap,fmap_ref,  pose, K, ref_K, scale_factor):
-        
-        pose=-1*pose  #pose求逆
-        cost =self.get_cost_each(pose,fmap_ref,fmap,inv2depth(inv_depth), K.unsqueeze(0), ref_K.squeeze(0), scale_factor)
-        return cost/5
     
     def forward(self, fmaps, target_image, ref_imgs, target_intrinsics, ref_intrinsics,
                 min_depth=0.1, max_depth=100, scaled_shape=(378, 504)
@@ -135,45 +129,28 @@ class DepthPoseNet(nn.Module):
         # print(f'fmaps shape: {len(fmaps)}')
         fmap1, fmaps_ref = fmaps[0], fmaps[1:]
         # print(f'[DEBUG] fmap1 shape: {fmap1.shape}')
+        
         # Initialize camera poses.
         pose_list_init = []
         for fmap_ref in fmaps_ref:
             pose_list_init.append(self.pose_head(torch.cat([fmap1, fmap_ref], dim=1)))
         
         # Initialize depths.
-        inv_depth_init = self.depth_head(fmap1, act_fn=torch.sigmoid)  
-        inv_depth_init_ref_list=[]
-        for fmap_ref in fmaps_ref:
-            inv_depth_init_ref= self.depth_head(fmap_ref, act_fn=torch.sigmoid)  #这里看起来还正常
-            inv_depth_init_ref_list.append(inv_depth_init_ref)
-
+        inv_depth_init = self.depth_head(fmap1, act_fn=torch.sigmoid)
         # print(f'[DEBUG] inv_depth_init shape: {inv_depth_init.shape}')
         up_mask = self.upmask_net(fmap1)
         inv_depth_up_init = self.upsample_depth(inv_depth_init, up_mask, ratio=self.feat_ratio, image_size=image_size)
 
-        inv_depth_up_init_ref_list=[]
-        up_mask_ref_list =[]
-        for inv_depth_init_ref,fmap_ref in zip(inv_depth_init_ref_list,fmaps_ref):
-            up_mask_ref =self.upmask_net(fmap_ref)
-            inv_depth_up_init_ref=self.upsample_depth(inv_depth_init_ref,up_mask_ref,ratio=self.feat_ratio,image_size=image_size)
-            inv_depth_up_init_ref_list.append(inv_depth_up_init_ref)
-            up_mask_ref_list.append(up_mask_ref)
-
         inv_depth_predictions = [self.scale_inv_depth(inv_depth_up_init)[0]]
         pose_predictions = [[pose.clone() for pose in pose_list_init]]
         
-
-
         # run the context network for optimization
         if self.iters > 0:
             cnet_depth = self.cnet_depth(target_image)        
             hidden_d, inp_d = torch.split(cnet_depth, [self.hdim, self.cdim], dim=1)
             hidden_d = torch.tanh(hidden_d)
             inp_d = torch.relu(inp_d)
-
             
-
-
             img_pairs = []
             for i in range(num_views):
                 ref_img = ref_imgs[i].unsqueeze(0)
@@ -189,17 +166,6 @@ class DepthPoseNet(nn.Module):
         pose_list = pose_list_init
         inv_depth = inv_depth_init
         inv_depth_up = None
-        inv_depth_refs_list=[]
-        hidden_d_ref_list=[]
-        inp_d_ref_list=[]
-        for i,(inv_depth_init_ref) in enumerate(inv_depth_init_ref_list):
-            inv_depth_refs_list.append(inv_depth_init_ref)  #inv_depth_refs_list对应参考帧的depth，在下面循环优化
-            cnet_depth_ref=self.cnet_depth(ref_imgs[i,:,:,:].unsqueeze(0))
-            hidden_d_ref,inp_d_ref=torch.split(cnet_depth_ref,[self.hdim,self.cdim],dim=1)
-            inp_d_ref=torch.relu(inp_d_ref)
-            hidden_d_ref_list.append(hidden_d_ref)
-            inp_d_ref_list.append(inp_d_ref)
-
         for itr in range(self.iters):
             inv_depth = inv_depth.detach()
             pose_list = [pose.detach() for pose in pose_list]
@@ -214,6 +180,7 @@ class DepthPoseNet(nn.Module):
             depth_cost_func = partial(self.depth_cost_calc, fmap=fmap1, fmaps_ref=fmaps_ref,
                                       pose_list=pose_list, K=target_intrinsics,
                                       ref_K=ref_intrinsics, scale_factor=1.0/self.feat_ratio)
+
     
             #########  update depth ##########
             hidden_d, up_mask_seqs, inv_depth_seqs = self.update_block_depth(hidden_d, depth_cost_func,
@@ -221,43 +188,13 @@ class DepthPoseNet(nn.Module):
                                                                              seq_len=self.seq_len, 
                                                                              scale_func=self.scale_inv_depth)
             
-            
             up_mask_seqs, inv_depth_seqs = [up_mask_seqs[-1]], [inv_depth_seqs[-1]]
             
             # upsample predictions
             for up_mask_i, inv_depth_i in zip(up_mask_seqs, inv_depth_seqs):
                 inv_depth_up = self.upsample_depth(inv_depth_i, up_mask_i, ratio=self.feat_ratio, image_size=image_size)
-                inv_depth_predictions.append(self.scale_inv_depth(inv_depth_up)[0])  #高分辨传出
-            inv_depth = inv_depth_seqs[-1]#低分辨循环
-            
-
-
-            up_mask_refs_list=[]
-            inv_depth_refs_list_down=[]#低分辨率
-            for i,(fmap_ref,pose,inv_depth_ref) in enumerate(zip(fmaps_ref,pose_list,inv_depth_refs_list)):
-                inv_depth_ref=inv_depth_ref.detach()
-                # depth_cost_func_ref=partial(self.depth_cost_calc_ref,fmap=fmap1,fmap_ref=fmap_ref,pose=pose,
-                #                             K=ref_intrinsics[i],ref_K=target_intrinsics,scale_factor=1.0/self.feat_ratio)
-                
-                depth_cost_func_ref = partial(self.depth_cost_calc, fmap=fmap1, fmaps_ref=fmaps_ref,
-                                      pose_list=[-pose_list[i]], K=target_intrinsics,
-                                      ref_K=ref_intrinsics, scale_factor=1.0/self.feat_ratio)
-
-                hidden_d_ref_list[i],up_mask_seqs_refs,inv_depth_seqs_refs=self.update_block_depth(hidden_d_ref_list[i],depth_cost_func_ref,
-                                        inv_depth_ref,inp_d_ref_list[i],          #hidden_d 跟inpud_的作用蛮大的
-                                        seq_len=self.seq_len,scale_func=self.scale_inv_depth)
-                up_mask_ref, inv_depth_ref = up_mask_seqs_refs[-1], inv_depth_seqs_refs[-1]
-                up_mask_refs_list.append(up_mask_ref)
-                inv_depth_refs_list_down.append(inv_depth_ref)
-
-            inv_depth_refs_list_up=[]  
-            inv_depth_refs_list = []#重新定义inv_depth_refs_list用于更新
-            for up_mask_ref_i,inv_depth_ref_i in zip(up_mask_refs_list,inv_depth_refs_list_down):
-                inv_depth_refs_list.append(inv_depth_ref_i)   #在这里更新
-                inv_depth_up_ref = self.upsample_depth(inv_depth_ref_i, up_mask_ref_i, ratio=self.feat_ratio, image_size=image_size)
-                inv_depth_refs_list_up.append(self.scale_inv_depth(inv_depth_up_ref)[0])   #list=5 分别对应五个ref_image
-
-
+                inv_depth_predictions.append(self.scale_inv_depth(inv_depth_up)[0])
+            inv_depth = inv_depth_seqs[-1]
             
             #########  update pose ###########
             pose_list_seqs = [None] * len(pose_list)
@@ -276,8 +213,7 @@ class DepthPoseNet(nn.Module):
         
         if not self.training:
             return inv_depth_predictions[-1], \
-                   torch.stack(pose_predictions[-1], dim=1).view(target_image.shape[0], len(ref_imgs), 6), fmap1 ,\
-                              #(b, n, 6)
+                   torch.stack(pose_predictions[-1], dim=1).view(target_image.shape[0], len(ref_imgs), 6), fmap1 #(b, n, 6)
         
         return inv_depth_predictions, \
                torch.stack([torch.stack(poses_ref, dim=1) for poses_ref in pose_predictions], dim=2), fmap1 #(b, n, iters, 6)

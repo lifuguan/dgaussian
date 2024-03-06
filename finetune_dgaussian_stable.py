@@ -64,7 +64,7 @@ class DGaussianTrainer(BaseTrainer):
         self.state_dicts['optimizers']['pose_optimizer'] = self.pose_optimizer
         self.state_dicts['schedulers']['pose_scheduler'] = self.pose_scheduler
 
-    def train_iteration(self, data_batch) -> None:
+    def train_iteration(self, batch) -> None:
         ######################### 3-stages training #######################
         # ---- (1) Train the pose optimizer with self-supervised loss.<---|
         # |             (10000 iterations)                                |
@@ -82,20 +82,18 @@ class DGaussianTrainer(BaseTrainer):
         if self.iteration == 0:
             self.state = self.model.switch_state_machine(state='joint')
 
-        min_depth, max_depth = data_batch['depth_range'][0][0], data_batch['depth_range'][0][1]
-
-
+        min_depth, max_depth = batch['depth_range'][0][0], batch['depth_range'][0][1]
         
         # Start of core optimization loop
         pred_inv_depths, pred_rel_poses, sfm_loss, fmap = self.model.correct_poses(
             fmaps=None,
-            target_image=data_batch['rgb'].cuda(),
-            ref_imgs=data_batch['src_rgbs'].cuda(),
-            target_camera=data_batch['camera'],
-            ref_cameras=data_batch['src_cameras'],
+            target_image=batch['rgb'].cuda(),
+            ref_imgs=batch['src_rgbs'].cuda(),
+            target_camera=batch['camera'],
+            ref_cameras=batch['src_cameras'],
             min_depth=min_depth,
             max_depth=max_depth,
-            scaled_shape=data_batch['scaled_shape'])
+            scaled_shape=batch['scaled_shape'])
 
         # The predicted inverse depth is used as a weak supervision to NeRF.
         self.pred_inv_depth = pred_inv_depths[-1]
@@ -103,19 +101,17 @@ class DGaussianTrainer(BaseTrainer):
         inv_depth_prior = inv_depth_prior.reshape(-1, 1)
 
         if self.config.use_pred_pose is True:
-            num_views = data_batch['src_cameras'].shape[1]
-            target_pose = data_batch['camera'][0,-16:].reshape(-1, 4, 4).repeat(num_views, 1, 1).to(self.device)
+            num_views = batch['src_cameras'].shape[1]
+            target_pose = batch['camera'][0,-16:].reshape(-1, 4, 4).repeat(num_views, 1, 1).to(self.device)
             context_poses = self.projector.get_train_poses(target_pose, pred_rel_poses[:, -1, :])
-            data_batch['context']['extrinsics'] = context_poses.unsqueeze(0).detach()
+            batch['context']['extrinsics'] = context_poses.unsqueeze(0).detach()
         
-        batch_ = data_shim(data_batch, device=self.device)
-        batch = self.model.gaussian_model.data_shim(batch_)
+        batch = data_shim(batch, device=self.device)
+        batch = self.model.gaussian_model.data_shim(batch)
         ret, data_gt = self.model.gaussian_model(batch, self.iteration)
 
         loss_all = 0
         loss_dict = {}
-
-
 
         # compute loss
         self.optimizer.zero_grad()
@@ -136,7 +132,8 @@ class DGaussianTrainer(BaseTrainer):
                 self.scalars_to_log['loss/smoothness_loss'] = sfm_loss['metrics']['smoothness_loss']
 
         if self.state == 'joint':
-            loss_all += loss_dict['self-sup-depth'].item() * 0.04
+            if self.config.use_depth_loss is True:
+                loss_all += loss_dict['self-sup-depth'].item() * 0.04
             loss_all += self.model.compose_joint_loss(
                 loss_dict['sfm_loss'], loss_dict['gaussian_loss'], self.iteration)
         elif self.state == 'pose_only':
