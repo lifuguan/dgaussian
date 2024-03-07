@@ -361,7 +361,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "3",
+                "CUDA_VISIBLE_DEVICES": "7",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "test:dgaussian-waymo",
@@ -377,7 +377,7 @@
                 "++train_dataset=waymo",
                 "++train_scenes=[019]",
                 "++eval_dataset=waymo",
-                "++eval_scenes=['003']",
+                "++eval_scenes=['081']",
                 "++num_source_views=5",
                 "++render_video=False",
                 "++expname=test"
