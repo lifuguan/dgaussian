@@ -16,10 +16,10 @@ local_rank : 0
 
 ## dataset
 train_dataset : llff_test
-train_scenes : [room]
+train_scenes : []
 dataset_weights : [1]
 eval_dataset : llff_test
-eval_scenes : [room]
+eval_scenes : []
 # eval_scenes : [trex, fern, flower, leaves, room, fortress, horns, orchids]
 
 num_source_views : 8
@@ -68,9 +68,9 @@ center_ratio : 0.8
 feat_loss_scale : 1e1
 
 ### CONSOLE AND TENSORBOARD
-n_validation : 500
+n_validation : 100
 n_tensorboard : 2
-n_checkpoint : 5000
+n_checkpoint : 200
 visdom_port : 9000
 
 ### evaluation options

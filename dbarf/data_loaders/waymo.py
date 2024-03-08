@@ -33,7 +33,10 @@ class WaymoStaticDataset(Dataset):
         [[0, 0, 1, 0], [-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]]
     )
     def __init__(self, args, mode, scenes=(), random_crop=True, **kwargs):
-        self.folder_path = os.path.join('data/waymo')
+        if mode == 'train' and len(scenes) == 0:
+            self.folder_path = os.path.join('data/waymo/training')
+        else:
+            self.folder_path = os.path.join('data/waymo/testing')
         self.dataset_name = 'waymo'
         self.pose_noise_level = 0
 
@@ -53,18 +56,22 @@ class WaymoStaticDataset(Dataset):
         self.idx_to_node_id_list = []
         self.node_id_to_idx_list = []
         self.train_view_graphs = []
-    
-        self.image_size = (504,760)
+        if mode == 'train' and len(scenes) == 0:
+            self.image_size = (352,480)
+        else:
+            self.image_size = (640,960)
+            # self.image_size = (176,608)
+            
         self.ratio = self.image_size[1] / 1920
         all_scenes = os.listdir(self.folder_path)
     
         
         
         ############     Wamyo Parameters     ############
-        # self.num_cams, self.camera_list =1, [0]
-        self.num_cams, self.camera_list =3, [1, 0, 2]
+        self.num_cams, self.camera_list =1, [0]
+        # self.num_cams, self.camera_list =3, [1, 0, 2]
         
-        self.start_timestep, self.end_timestep = 0, 198
+        self.start_timestep, self.end_timestep = 0, 197
         if len(scenes) > 0:
             if isinstance(scenes, str):
                 scenes = [scenes]
@@ -213,8 +220,8 @@ class WaymoStaticDataset(Dataset):
         rgb = imageio.imread(rgb_file).astype(np.float32) / 255.
         render_pose = self.render_poses[idx]
                 
-        translation = np.array([3, 0, 0])
-        render_pose[:, 3] += np.dot(render_pose[:, :3], translation)
+        # translation = np.array([3, 0, 0])
+        # render_pose[:, 3] += np.dot(render_pose[:, :3], translation)
         
         intrinsics = self.render_intrinsics[idx]
         depth_range = self.render_depth_range[idx]
@@ -237,7 +244,7 @@ class WaymoStaticDataset(Dataset):
             else:
                 id_render = -1
             subsample_factor = np.random.choice(np.arange(1, 4), p=[0.2, 0.45, 0.35])
-            num_select = self.num_source_views + np.random.randint(low=-2, high=2)
+            num_select = self.num_source_views# + np.random.randint(low=-2, high=2)
         else:
             id_render = -1
             subsample_factor = 1
@@ -310,18 +317,19 @@ class WaymoStaticDataset(Dataset):
         depth_range = torch.tensor([depth_range[0] * 0.9, depth_range[1] * 1.6], dtype=torch.float32)
 
         # Resize the world to make the baseline 1.
-        if pix_src_extrinsics.shape[0] == 2:
-            a, b = pix_src_extrinsics[:, :3, 3]
-            scale = (a - b).norm()
-            if scale < 0.001:
-                print(
-                    f"Skipped {scene} because of insufficient baseline "
-                    f"{scale:.6f}"
-                )
-            pix_src_extrinsics[:, :3, 3] /= scale
-            pix_extrinsics[:, :3, 3] /= scale
-        else:
-            scale = 1
+        # if pix_src_extrinsics.shape[0] == 2:
+        #     a, b = pix_src_extrinsics[:, :3, 3]
+        #     scale = (a - b).norm()
+        #     if scale < 0.001:
+        #         print(
+        #             f"Skipped {scene} because of insufficient baseline "
+        #             f"{scale:.6f}"
+        #         )
+        #     pix_src_extrinsics[:, :3, 3] /= scale
+        #     pix_extrinsics[:, :3, 3] /= scale
+        # else:
+        #     scale = 1
+        scale = 1
 
         
         return {'rgb': torch.from_numpy(pix_rgb[..., :3]),
@@ -338,7 +346,7 @@ class WaymoStaticDataset(Dataset):
                         "image": torch.from_numpy(pix_src_rgbs[..., :3]).permute(0, 3, 1, 2),
                         "near":  depth_range[0].repeat(num_select) / scale,
                         "far": depth_range[1].repeat(num_select) / scale,
-                        "index": src_name,
+                        "index": torch.tensor([int(i) for i in src_name]),
                 },
                 "target": {
                         "extrinsics": pix_extrinsics,

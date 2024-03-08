@@ -50,7 +50,7 @@
                 "--rootdir",
                 "data/ibrnet/train",
                 "--ckpt_path",
-                "/home/gyy/Downloads/dgaussin_train/dgaussian/checkpoint/dbarf_model_200000.pth",
+                "model_zoo/dbarf_model_200000.pth",
                 // "--eval_scenes",
                 // "waymo"
             ]
@@ -58,45 +58,89 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "7",
+                "PYTHONPATH": "${workspaceFolder}"
             },
-            "name": "train:ibrnet",
+            "name": "train:pixelsplat-waymo",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/train_ibrnet.py",
+            "program": "${workspaceFolder}/train_gaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--config",
-                "configs/pretrain_dbarf.txt",
-                "--rootdir",
-                "data/ibrnet/train",
-                "--ckpt_path",
-                "/home/gyy/Downloads/dgaussin_train/dgaussian/checkpoint/dbarf_model_200000.pth",
-                // "/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/waymo/model/model_025000.pth",
-                "--expname", "waymo_ibrnet_1"
-                // "--eval_scenes",
-                // "waymo"
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=model_zoo/dgaussian_resnet.pth",
+                "++train_dataset=waymo",
+                "++eval_dataset=waymo",
+                "++eval_scenes=['126']",
+                "++render_video=False",
+                "++num_source_views=2",
+                "++expname=pixelsplat_generalized_waymo"
             ]
-            // "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "room"]
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "3",
                 "PYTHONPATH": "${workspaceFolder}"
             },
-            "name": "test:dgaussian-crop",
+            "name": "train:pixelsplat-LowRes",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/eval_crop_final.py",
+            "program": "${workspaceFolder}/train_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=model_zoo/dgaussian_resnet.pth",
+                "++train_scenes=[fortress]",
+                "++train_datasets=[llff_test]",
+                "++eval_scenes=[fortress]",
+                "++num_source_views=2",
+                "++expname=pixelsplat_ft_fortress"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "6",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "test:pixelsplat-waymo",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval/eval_dgaussian.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/eval",
-                "+ckpt_path=./model_zoo/dgaussian_resnet.pth",
-                "++eval_scenes=[room]",
-                "++num_source_views=5",
-                "++expname=test"
+                "+ckpt_path=data/ibrnet/train/out/pixelsplat_ft_fortress/model/model_000400.pth",
+                "++train_datasets=llff_test",
+                "++eval_dataset=llff_test",
+                "++eval_scenes=['fortress']",
+                "++train_scenes=['fortress']",
+                "++num_source_views=2",
+                "++expname=pixelsplat_ft_fortress"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "6",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "test:pixelsplat-llff",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval/eval_dgaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/eval",
+                "+ckpt_path=data/ibrnet/train/out/pixelsplat_generalized_llff/model/model_004000.pth",
+                "++train_datasets=llff_test",
+                "++eval_dataset=llff_test",
+                "++eval_scenes=['room']",
+                "++train_scenes=['room']",
+                "++num_source_views=2",
+                "++expname=pixelsplat_generalized_waymo"
             ]
         },
         {
