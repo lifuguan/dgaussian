@@ -221,7 +221,8 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/train",
-                "+ckpt_path=../pixelsplat/outputs/waymo_generalized/checkpoints/20000_dgassians.ckpt",  // deferred 泛化权重
+                "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth",    // zui you fanhua
+                // "+ckpt_path=../pixelsplat/outputs/waymo_generalized/checkpoints/20000_dgassians.ckpt",  // deferred 泛化权重
                 "++train_dataset=waymo",
                 "++eval_dataset=waymo",
                 "++eval_scenes=[019]",
@@ -337,7 +338,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "3",
+                "CUDA_VISIBLE_DEVICES": "4",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "finetune:gaussian-019",
@@ -349,7 +350,8 @@
             "args": [
                 "++rootdir=data/ibrnet/train",
                 // "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
-                "+ckpt_path=data/ibrnet/train/out/ft_019/model/model_000200.pth",  // deferred 泛化权重
+                "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
+                // "+ckpt_path=data/ibrnet/train/out/ft_019/model/model_000200.pth",  // deferred 泛化权重
                 "++train_dataset=waymo",
                 "++train_scenes=[019]",
                 "++eval_dataset=waymo",

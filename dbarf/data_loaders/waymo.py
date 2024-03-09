@@ -84,10 +84,11 @@ class WaymoStaticDataset(Dataset):
         self.train_view_graphs = []
 
         if mode == 'train':
-            self.image_size = (228, 320)
+            self.image_size = (352, 480)
             # self.image_size = (352, 480)
         else:
             # self.image_size = (228, 320)
+            # self.image_size = (352, 480)
             self.image_size = (640,960)        
         all_scenes = os.listdir(self.folder_path)
     

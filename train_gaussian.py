@@ -100,17 +100,17 @@ class GaussianTrainer(BaseTrainer):
             self.state = self.model.switch_state_machine(state='nerf_only')
         self.optimizer.zero_grad()
         # batch = self.model.gaussian_model.data_shim(batch_)
-        with torch.no_grad():
-            batch = data_shim(batch, device=self.device)
-            batch = self.model.gaussian_model.data_shim(batch)
-            ret, data_gt = self.model.gaussian_model(batch, self.iteration)
-        ret['rgb'].requires_grad_(True)
-        coarse_loss = self.rgb_loss(ret, data_gt)
-        coarse_loss.backward()     
-        rgb_pred_grad=ret['rgb'].grad
+        # with torch.no_grad():
+        batch = data_shim(batch, device=self.device)
+        batch = self.model.gaussian_model.data_shim(batch)
+        #     ret, data_gt = self.model.gaussian_model(batch, self.iteration)
+        # ret['rgb'].requires_grad_(True)
+        # coarse_loss = self.rgb_loss(ret, data_gt)
+        # coarse_loss.backward()     
+        # rgb_pred_grad=ret['rgb'].grad
         
         
-        
+        # ret_rgb
         #随机裁剪中心
         _, _, _, h, w = batch["target"]["image"].shape
         out_h=176
@@ -139,8 +139,13 @@ class GaussianTrainer(BaseTrainer):
                     ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
         # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
         # coarse_loss.backward()
-                ret_patch['rgb']=ret_patch['rgb'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
-                ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])
+                # ret_patch['rgb']=ret_patch['rgb'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
+                mask = torch.zeros_like(ret_patch['rgb'])
+                mask[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]=1
+                mask = mask.to(self.device)
+                coarse_loss = self.rgb_loss(ret_patch, data_gt_patch*mask)
+                coarse_loss.backward()
+                # ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])
         self.optimizer.step()
         self.scheduler.step()
         # compute loss
