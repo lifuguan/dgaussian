@@ -29,10 +29,10 @@ from dbarf.geometry.align_poses import align_ate_c2b_use_a2b
 from dbarf.pose_util import rotation_distance
 from eval_dbarf import compose_state_dicts
 from dbarf.visualization.pose_visualizer import visualize_cameras
-
-
+from einops import rearrange, repeat
+from matplotlib import cm
+from torchvision.utils import save_image
 mse2psnr = lambda x: -10. * np.log(x+TINY_NUMBER) / np.log(10.)
-
 
 @torch.no_grad()
 def get_predicted_training_poses(pred_poses):
@@ -121,12 +121,43 @@ def compose_state_dicts(model) -> dict:
 
     return state_dicts
 
+
+
+def apply_color_map(
+    x,
+    color_map,
+):
+    cmap = cm.get_cmap(color_map)
+
+    # Convert to NumPy so that Matplotlib color maps can be used.
+    mapped = cmap(x.detach().clip(min=0, max=1).cpu().numpy())[..., :3]
+
+    # Convert back to the original format.
+    return torch.tensor(mapped, device=x.device, dtype=torch.float32)
+    
+def apply_color_map_to_image(
+    image,
+    color_map ,
+) :
+    image = apply_color_map(image, color_map)
+    return rearrange(image, "... h w c -> ... c h w")
+def depth_map(result):
+            near = result[result > 0][:16_000_000].quantile(0.01).log()
+            far = result.view(-1)[:16_000_000].quantile(0.99).log()
+            result = result.log()
+            result = 1 - (result - near) / (far - near)
+            return apply_color_map_to_image(result, "turbo")
+
+
+    
+
+
+
 @hydra.main(
     version_base=None,
     config_path="../configs",
     config_name="pretrain_dgaussian",
 )
-
 def eval(cfg_dict: DictConfig):
     args = cfg_dict
     args.distributed = False
@@ -180,8 +211,11 @@ def eval(cfg_dict: DictConfig):
     R_errors = []
     t_errors = []
     video_rgb_pred = []
+    video_depth_pred = []
     visdom_ins = visdom.Visdom(server='localhost', port=8097, env='splatam')
     for i, data in enumerate(test_loader):
+        if i>50:
+            break
         rgb_path = data['rgb_path'][0]
         file_id = os.path.basename(rgb_path).split('.')[0]
         src_rgbs = data['src_rgbs'][0].cpu().numpy()
@@ -191,31 +225,33 @@ def eval(cfg_dict: DictConfig):
         model.switch_to_eval()
         with torch.no_grad():
 
-            if args.render_video is not True:
-                pred_inv_depth, pred_rel_poses, _, _ = model.correct_poses(
-                    fmaps=None,
-                    target_image=data['rgb'].cuda(),
-                    ref_imgs=data['src_rgbs'].cuda(),
-                    target_camera=data['camera'],
-                    ref_cameras=data['src_cameras'],
-                    min_depth=data['depth_range'][0][0],
-                    max_depth=data['depth_range'][0][1],
-                    scaled_shape=data['scaled_shape'])
-                pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
-                pred_depth = inv2depth(pred_inv_depth)
-                pred_rel_poses = pred_rel_poses.detach().cpu()
-                aligned_pred_poses, poses_gt = align_predicted_training_poses(pred_rel_poses, data)
-                pose_error = evaluate_camera_alignment(aligned_pred_poses, poses_gt)
-                visualize_cameras(visdom_ins, step=i, poses=[aligned_pred_poses, poses_gt], cam_depth=0.1)
-                
-                R_errors.append(pose_error[0])
-                t_errors.append(pose_error[1])
+            # if args.render_video is not True:
+            pred_inv_depth, pred_rel_poses, _, _ = model.correct_poses(
+                fmaps=None,
+                target_image=data['rgb'].cuda(),
+                ref_imgs=data['src_rgbs'].cuda(),
+                target_camera=data['camera'],
+                ref_cameras=data['src_cameras'],
+                min_depth=data['depth_range'][0][0],
+                max_depth=data['depth_range'][0][1],
+                scaled_shape=data['scaled_shape'])
+            pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
+            pred_depth = inv2depth(pred_inv_depth)
+            pred_rel_poses = pred_rel_poses.detach().cpu()
+            aligned_pred_poses, poses_gt = align_predicted_training_poses(pred_rel_poses, data)
+            pose_error = evaluate_camera_alignment(aligned_pred_poses, poses_gt)
+            visualize_cameras(visdom_ins, step=i, poses=[aligned_pred_poses, poses_gt], cam_depth=0.1)
+            
+            R_errors.append(pose_error[0])
+            t_errors.append(pose_error[1])
 
             batch = data_shim(data, device="cuda:0")
             batch = gaussian_model.data_shim(batch)       
             output, gt_rgb = gaussian_model(batch, i)
-                        
-
+            depth = depth_map(output['depth'][0][0])
+            depth = depth.detach().cpu().permute(1, 2, 0)
+            # depth = depth_map(output['depth'][0])
+            # depth = depth.detach().cpu().permute(0,2, 3, 1)
             gt_rgb = gt_rgb['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
             coarse_pred_rgb = output['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
             coarse_err_map = torch.sum((coarse_pred_rgb - gt_rgb) ** 2, dim=-1).numpy()
@@ -259,7 +295,7 @@ def eval(cfg_dict: DictConfig):
                     "running mean coarse ssim: {:03f}, running mean fine ssim: {:03f} \n" 
                     "current coarse lpips: {:03f}, current fine lpips: {:03f} \n"
                     "running mean coarse lpips: {:03f}, running mean fine lpips: {:03f} \n"
-                    "R Error {:.03f}, t Error {:.03f} \n"
+                    # "R Error {:.03f}, t Error {:.03f} \n"
                     "===================\n"
                     .format(scene_name, file_id,
                             coarse_psnr, fine_psnr,
@@ -268,9 +304,8 @@ def eval(cfg_dict: DictConfig):
                             running_mean_coarse_ssim, running_mean_fine_ssim,
                             coarse_lpips, fine_lpips,
                             running_mean_coarse_lpips, running_mean_fine_lpips,
-                            pose_error[0], pose_error[1]
+                            # pose_error[0], pose_error[1]
                             ))
-                print(f'context:{batch["context"]["index"]}')
                 results_dict[scene_name][file_id] = {'coarse_psnr': coarse_psnr,
                                                     'fine_psnr': fine_psnr,
                                                     'coarse_ssim': coarse_ssim,
@@ -280,7 +315,11 @@ def eval(cfg_dict: DictConfig):
                                                     }
                       
                 video_rgb_pred.append(coarse_pred_rgb)
-                continue
+                video_depth_pred.append(depth)
+                # v,_,_,_ = depth.shape
+                # for i in range(v): 
+                #     video_depth_pred.append(depth[i])
+                # imageio.mimwrite(os.path.join(out_scene_dir, 'video_depth_pred_interplate.mp4'), video_depth_pred, fps=10, quality=8)
                 
             # saving outputs ...
             imageio.imwrite(os.path.join(out_scene_dir, '{}_average.png'.format(file_id)),averaged_img)
@@ -290,15 +329,19 @@ def eval(cfg_dict: DictConfig):
                             (coarse_pred_depth.numpy().squeeze() * 1000.).astype(np.uint16))
             coarse_pred_depth_colored = colorize_np(coarse_pred_depth,
                                                     range=tuple(data['depth_range'].squeeze().cpu().numpy()))
-            imageio.imwrite(os.path.join(out_scene_dir, '{}_depth_vis_coarse.png'.format(file_id)),
-                            (255 * coarse_pred_depth_colored).astype(np.uint8))
+
+
+            save_image(depth.permute(2,0,1), os.path.join(out_scene_dir, '{}_depth_vis_coarse.png'.format(file_id)))
 
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth.png'),
                             (pred_depth.numpy() * 255.).astype(np.uint8))
-            pred_depth = colorize(pred_depth, cmap_name='jet', append_cbar=True)
+            coarse_pred_depth = colorize(coarse_pred_depth, cmap_name='jet', append_cbar=True)
+            imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_dgassin_color_depth.png'),
+                            (coarse_pred_depth.numpy() * 255.).astype(np.uint8))
+
+            pred_depth = colorize_1(pred_depth, cmap_name='jet', append_cbar=True)
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_color_depth.png'),
                             (pred_depth.numpy() * 255.).astype(np.uint8))
-
             imageio.imwrite(os.path.join(out_scene_dir, '{}_err_map_coarse.png'.format(file_id)),
                             coarse_err_map_colored)
             
@@ -345,6 +388,7 @@ def eval(cfg_dict: DictConfig):
                                                  }
     if args.render_video is True:
         imageio.mimwrite(os.path.join(out_scene_dir, 'video_rgb_pred.mp4'), video_rgb_pred, fps=10, quality=8)
+        imageio.mimwrite(os.path.join(out_scene_dir, 'video_depth_pred.mp4'), video_depth_pred, fps=10, quality=8)
     
     R_errors = np.concatenate(R_errors, axis=0)
     t_errors = np.concatenate(t_errors, axis=0)

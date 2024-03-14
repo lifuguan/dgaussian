@@ -138,7 +138,7 @@ class BaseTrainer(object):
             log_dir = os.path.join(self.config.rootdir, 'logs', self.config.expname)
             self.writer = SummaryWriter(log_dir)
             print(f'[INFO] Saving tensorboard files to {log_dir}.')
-
+        
         # Setup visdom.
         if self.config.enable_visdom and self.config.local_rank == 0:
             is_open = check_socket_open(self.config.visdom_server, self.config.visdom_port) # check if visdom server is runninng

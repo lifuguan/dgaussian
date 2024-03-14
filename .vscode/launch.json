@@ -41,7 +41,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "1",
+                "CUDA_VISIBLE_DEVICES": "0",
             },
             "name": "test:dbarf",
             "type": "python",
@@ -55,7 +55,8 @@
                 "--rootdir",
                 "data/ibrnet/train",
                 "--ckpt_path",
-                "pretrain_ibrent/pretrained/dbarf_ibrnet_255000.pth",
+                "data/ibrnet/train/out/ft_dgaussian_003_ref_loss/model/model_000500.pth",
+                // "pretrain_ibrent/pretrained/dbarf_ibrnet_255000.pth",
                 // "data/ibrnet/train/out/dbarf_waymo/model/model_005000.pth",
                 // "model_zoo/dbarf_model_200000.pth",
                 "--eval_dataset",
@@ -63,7 +64,7 @@
                 "--eval_scenes",
                 "003",
                 "--expname",
-                "generalized_ibrnet_003"
+                "generalized_ibrnet_003_ref_loss"
             ]
         },
         {
@@ -111,7 +112,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "2",
+                "CUDA_VISIBLE_DEVICES": "5",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "test:dgaussian-2",
@@ -124,11 +125,14 @@
                 "++rootdir=data/ibrnet/eval",
                 // "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
                 // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_019/model/model_002800.pth",
-                "++eval_dataset=llff_test",
-                "++eval_scenes=[room]",
-                "++num_source_views=7",
-                "++render_video=False",
-                "++expname=llff_generalized_room"
+                "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003/model/model_001000.pth",
+                // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003/model/model_002500.pth",
+                // "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
+                "++eval_dataset=waymo",
+                "++eval_scenes=[003]",    
+                "++num_source_views=4",
+                "++render_video=True",
+                "++expname=ft_dgaussian_003",
             ]
         },
         {
@@ -210,7 +214,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "6",
+                "CUDA_VISIBLE_DEVICES": "4",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "finetune:dgaussian-waymo",
@@ -222,16 +226,16 @@
             "args": [
                 "++rootdir=data/ibrnet/train",
                 "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth",    // zui you fanhua
-                // "+ckpt_path=../pixelsplat/outputs/waymo_generalized/checkpoints/20000_dgassians.ckpt",  // deferred 泛化权重
+                // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003_ref_loss/model/model_001000.pth",
                 "++train_dataset=waymo",
                 "++eval_dataset=waymo",
-                "++eval_scenes=[019]",
-                "++train_scenes=[019]",
-                "++num_source_views=5",
-                "++expname=ft_dgaussian_019",
+                "++eval_scenes=[003]",
+                "++train_scenes=[003]",
+                "++num_source_views=4",
+                "++expname=ft_dgaussian_003_ref_loss",
                 "++use_depth_loss=False",
                 "++use_pred_pose=True",
-                "++render_video=True"
+                "++render_video=False"
             ]
         },
         {
@@ -338,10 +342,10 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "4",
+                "CUDA_VISIBLE_DEVICES": "6",
                 "PYTHONPATH": "${workspaceFolder}"
             },
-            "name": "finetune:gaussian-019",
+            "name": "finetune:gaussian-003",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/train_gaussian.py",
@@ -349,16 +353,17 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/train",
-                // "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
-                "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
+                // "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpπt",  // deferred 泛化权重
+                // "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
+                "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003/model/model_000500.pth",
                 // "+ckpt_path=data/ibrnet/train/out/ft_019/model/model_000200.pth",  // deferred 泛化权重
                 "++train_dataset=waymo",
-                "++train_scenes=[019]",
+                "++train_scenes=[003]",
                 "++eval_dataset=waymo",
-                "++eval_scenes=[019]",
-                "++num_source_views=7",
+                "++eval_scenes=[003]",
+                "++num_source_views=4",
                 "++render_video=False",
-                "++expname=ft_019"
+                "++expname=ft_003"
             ]
         },
         {
