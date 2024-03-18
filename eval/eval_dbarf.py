@@ -18,7 +18,7 @@ from dbarf.projection import Projector
 from dbarf.data_loaders import dataset_dict
 from dbarf.loss.ssim_torch import ssim as ssim_torch
 from dbarf.geometry.depth import inv2depth
-
+import time
 
 mse2psnr = lambda x: -10. * np.log(x+TINY_NUMBER) / np.log(10.)
 
@@ -111,7 +111,7 @@ if __name__ == '__main__':
     running_mean_fine_ssim = 0
 
     lpips_loss = lpips.LPIPS(net="alex").cuda()
-
+    time_d = 0
     for i, data in enumerate(test_loader):
         rgb_path = data['rgb_path'][0]
         file_id = os.path.basename(rgb_path).split('.')[0]
@@ -120,9 +120,9 @@ if __name__ == '__main__':
         averaged_img = (np.mean(src_rgbs, axis=0) * 255.).astype(np.uint8)
         imageio.imwrite(os.path.join(out_scene_dir, '{}_average.png'.format(file_id)),
                         averaged_img)
-
         model.switch_to_eval()
         with torch.no_grad():
+            time_start = time.time()
             ray_sampler = RaySamplerSingleImage(data, device='cuda:0')
             ray_batch = ray_sampler.get_all()
 
@@ -131,7 +131,9 @@ if __name__ == '__main__':
             
             feat_maps = (all_feat_maps[0][1:, :32, ...], None) if args.coarse_only else \
                         (all_feat_maps[0][1:, :32, ...], all_feat_maps[1][1:, ...])
-
+            end_time = time.time()
+            time_keep=end_time-time_start
+            time_d=time_d+time_keep
             pred_inv_depth, pred_rel_poses, _, _ = model.correct_poses(
                 fmaps=None,
                 target_image=data['rgb'].cuda(),
@@ -141,7 +143,7 @@ if __name__ == '__main__':
                 min_depth=data['depth_range'][0][0],
                 max_depth=data['depth_range'][0][1],
                 scaled_shape=data['scaled_shape'])
-
+            time_start=time.time()
             ret = render_single_image(ray_sampler=ray_sampler,
                                       ray_batch=ray_batch,
                                       model=model,
@@ -155,7 +157,10 @@ if __name__ == '__main__':
                                       feat_maps=feat_maps,
                                       rel_poses=None #pred_rel_poses
                                       )
-
+            end_time=time.time()
+            time_keep=end_time-time_start
+            time_d=time_d+time_keep
+            print(f'sum:{time_d},mean{time_d/(i+1)}')
             pred_inv_depth = pred_inv_depth.squeeze(0).squeeze(0).detach().cpu()
             pred_depth = inv2depth(pred_inv_depth)
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth.png'),

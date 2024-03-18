@@ -64,8 +64,8 @@ class DBARFTrainer(IBRNetTrainer):
         # |--> (3) Jointly train the pose optimizer and ibrnet.           |
         # |             (10000 iterations)                                |
         # |-------------------------->------------------------------------|
-        if self.iteration == 0:
-            self.state = self.model.switch_state_machine(state='nerf_only')
+        if self.iteration == 0 or self.iteration == 10000:
+            self.state = self.model.switch_state_machine(state='joint')
         # if self.iteration % 10000 == 0 and (self.iteration // 10000) % 2 == 0:
         #     self.state = self.model.switch_state_machine(state='pose_only')
         # elif self.iteration % 10000 == 0 and (self.iteration // 10000) % 2 == 1:
@@ -117,8 +117,8 @@ class DBARFTrainer(IBRNetTrainer):
                           N_importance=args.N_importance,
                           det=args.det,
                           white_bkgd=args.white_bkgd,
-                        #   inv_depth_prior=None, #inv_depth_prior, # TODO(chenyu): enabling the adaptive sampling when well tuned
-                        #   rel_poses=pred_rel_poses[:, -1, :]
+                          inv_depth_prior=None, #inv_depth_prior, # TODO(chenyu): enabling the adaptive sampling when well tuned
+                          rel_poses=pred_rel_poses[:, -1, :]
                         )
 
         loss_all = 0

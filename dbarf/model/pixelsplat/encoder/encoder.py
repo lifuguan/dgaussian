@@ -27,6 +27,6 @@ class Encoder(nn.Module, ABC, Generic[T]):
     ) -> Gaussians:
         pass
 
-    def get_data_shim(self) -> DataShim:
+def get_data_shim(self) -> DataShim:
         """The default shim doesn't modify the batch."""
         return lambda x: x

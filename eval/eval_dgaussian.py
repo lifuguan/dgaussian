@@ -24,6 +24,7 @@ from dbarf.model.pixelsplat.decoder import get_decoder
 from dbarf.model.pixelsplat.encoder import get_encoder
 from dbarf.model.pixelsplat.pixelsplat import PixelSplat
 from einops import rearrange
+import time
 mse2psnr = lambda x: -10. * np.log(x+TINY_NUMBER) / np.log(10.)
 
 
@@ -146,7 +147,7 @@ def eval(cfg_dict: DictConfig):
             
             feat_maps = (all_feat_maps[0][1:, :32, ...], None) if args.coarse_only else \
                         (all_feat_maps[0][1:, :32, ...], all_feat_maps[1][1:, ...])
-
+            
             pred_inv_depth, pred_rel_poses, _, _ = model.correct_poses(
                 fmaps=None,
                 target_image=data['rgb'].cuda(),
@@ -177,7 +178,7 @@ def eval(cfg_dict: DictConfig):
                             (pred_depth_gaussins.numpy() * 255.).astype(np.uint8))
 
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth.png'),
-                            (pred_depth.numpy() * 255.).astype(np.uint8))
+                        (pred_depth.numpy() * 255.).astype(np.uint8))
             pred_depth = colorize(pred_depth, cmap_name='jet', append_cbar=True)
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_color_depth.png'),
                             (pred_depth.numpy() * 255.).astype(np.uint8))

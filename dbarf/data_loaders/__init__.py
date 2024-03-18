@@ -25,6 +25,7 @@ from .spaces_dataset import *
 from .nerf_synthetic import *
 from .scannet import *
 from .waymo import *
+from .kitti import *
 dataset_dict = {
     'spaces': SpacesFreeDataset,
     'google_scanned': GoogleScannedDataset,
@@ -35,5 +36,6 @@ dataset_dict = {
     'ibrnet_collected': IBRNetCollectedDataset,
     'scannet': ScannetDataset,
     'llff_test': LLFFTestDataset,
-    'waymo': WaymoStaticDataset,
+    'waymo':WaymoStaticDataset,
+    'kitti':KittiPixelSource,
 }

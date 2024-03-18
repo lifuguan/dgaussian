@@ -5,6 +5,8 @@ data
 model_zoo
 outputs
 pretrain_ibrent
+visualize.ipynb
+
 
 pic_006
 pic_008
@@ -13,3 +15,6 @@ pic_168
 pic_241
 pic_419
 homework_least_square.py
+waymo_gs_003
+eval_dbarf.py
+pretrain_waymo

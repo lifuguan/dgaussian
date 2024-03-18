@@ -119,7 +119,7 @@ class BaseTrainer(object):
                                                    num_workers=self.config.workers,
                                                    pin_memory=True,
                                                    sampler=self.train_sampler,
-                                                   shuffle=True if self.train_sampler is None else False)
+                                                   shuffle=False if self.train_sampler is None else False)
 
         # Create validation dataset.
         self.val_dataset = dataset_dict[self.config.eval_dataset](self.config, 'validation',
@@ -171,6 +171,25 @@ class BaseTrainer(object):
             Implement this function.
         """
         raise NotImplementedError
+    
+
+    def demo(self):
+        assert self.train_loader is not None
+        assert self.val_loader is not None
+        self.iteration =0
+        iter_start = self.load_checkpoint(load_optimizer=not self.config.no_load_opt,
+                                          load_scheduler=not self.config.no_load_scheduler)
+        print(f'train set len {len(self.train_loader)}')
+        lens=len(self.train_loader)
+        for batch in self.train_loader:
+            # Main training logic.
+ 
+            self.demorender(data_batch=batch)
+            
+            
+            self.iteration += 1
+
+        self.train_done = True
 
     def train(self):
         assert self.train_loader is not None
@@ -227,6 +246,9 @@ class BaseTrainer(object):
         self.train_done = True
 
     def train_iteration(self, data_batch) -> None:
+        raise NotImplementedError
+
+    def demorender(self, data_batch) :
         raise NotImplementedError
 
     @torch.no_grad()

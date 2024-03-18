@@ -15,7 +15,8 @@ from ...dataset.types import BatchedExample
 from .decoder.decoder import Decoder, DepthRenderingMode
 from .encoder import Encoder
 from .encoder.visualization.encoder_visualizer import EncoderVisualizer
-
+import math
+from torchvision.utils import save_image
 @runtime_checkable
 class TrajectoryFn(Protocol):
     def __call__(
@@ -97,13 +98,40 @@ class PixelSplat(nn.Module):
             (h, w),
             depth_mode='depth'
             )
+        
             
             ret = {'rgb': output.color, 'depth': output.depth}
             target_gt = {'rgb': batch["target"]["image"]}
             return ret, target_gt
         else:
-            features = self.encoder(batch["context"], global_step,None,4,4)
+
+
+            
             # Run the model.
+
+            # batch["target"]["intrinsics"][:,:,0,0]=batch['target']['intrinsics'][:,:,0,0]*0.5
+            # batch['target']['intrinsics'][:,:,1,1]=batch['target']['intrinsics'][:,:,1,1]*0.5
+
+            # translation = torch.tensor([3, 0, 0]).cuda().float().unsqueeze(-1)
+            # # batch["target"]["extrinsics"][0][0][:, 3] += torch.mm(batch["target"]["extrinsics"][0][0][:, :3], translation) .squeeze(-1)   
+
+            # # 将角度从度转换为弧度
+            # theta = 10 * math.pi / 180
+
+            # # 构造绕 Z 轴旋转的旋转矩阵
+            # rotation_matrix = torch.tensor([[math.cos(theta), -math.sin(theta), 0, 0],
+            #                                 [math.sin(theta),  math.cos(theta), 0, 0],
+            #                                 [0,               0,               1, 0],
+            #                                 [0,               0,               0, 1]], device='cuda:0')
+
+            # # 应用旋转
+            # batch["target"]["extrinsics"][0][0] = torch.matmul(rotation_matrix, batch["target"]["extrinsics"][0][0])
+
+
+
+
+
+            features = self.encoder(batch["context"], global_step,None,4,4)
             for k in range(batch["context"]["image"].shape[1] - 1):
                 tmp_batch = self.batch_cut(batch["context"],k)
                 tmp_gaussians = self.encoder(tmp_batch, global_step,features[:,k:k+2,:,:,:],i,j,True) #默认进全图即i=3，j=3
@@ -125,8 +153,9 @@ class PixelSplat(nn.Module):
                 (h, w),
                 depth_mode='depth'
             )
-            
+
             ret = {'rgb': output.color, 'depth': output.depth}
+            save_image(output.color[0][0],f'render{52}.png')
             target_gt = {'rgb': batch["target"]["image"]}
             return ret, target_gt
     
@@ -137,5 +166,5 @@ class PixelSplat(nn.Module):
             'image': batch['image'][:,i:i+2,:,:,:],
             'near': batch['near'][:,i:i+2],
             'far': batch['far'][:,i:i+2],
-            'index': batch['index'][:,i:i+2],
+            # 'index': batch['index'][:,i:i+2],
         }

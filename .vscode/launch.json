@@ -32,7 +32,17 @@
             "program": "${workspaceFolder}/train_dbarf.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "/home/gyy/Downloads/dgaussin_train/dgaussian/checkpoint/dbarf_model_200000.pth", "--expname", "waymo"]
+            "args": ["--config", "configs/pretrain_dbarf.txt",
+            "--train_dataset","waymo",
+            "--train_scenes","069",
+            "--eval_dataset",
+            "waymo",
+            "--eval_scenes",
+            "069",
+             "--rootdir", "data/ibrnet/train", "--ckpt_path", 
+             "data/ibrnet/train/out/waymo_069_dbarf_ft/model/model_000000.pth",
+             // "pretrain_ibrent/pretrained/dbarf_ibrnet_260000.pth", 
+            "--expname", "waymo_069_dbarf_ft"]
         },
         {
             "env": {
@@ -50,9 +60,47 @@
                 "--rootdir",
                 "data/ibrnet/train",
                 "--ckpt_path",
-                "pretrain_ibrent/pretrained/dbarf_ibrnet_255000.pth",
-                // "--eval_scenes",
-                // "waymo"
+                // "/home/gyy/Downloads/dgaussin_train/dgaussian/checkpoint/dbarf_model_200000.pth",                
+                "data/ibrnet/train/out/waymo_003_dbarf_ft/model/model_030000.pth",
+                // "data/ibrnet/train/out/waymo_019_dbarf_ft/model/model_010000.pth",
+                // "pretrain_ibrent/pretrained/dbarf_ibrnet_260000.pth",
+                // "pretrain_ibrent/pretrained/dbarf_ibrnet_255000.pth",
+                "--train_dataset",
+                "waymo",
+                "--eval_dataset",
+                "waymo",
+                "--eval_scenes",
+                "003"
+            ]
+            // "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "room"]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
+            },
+            "name": "test:dbarf_pose_vi",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval_dbarf.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config",
+                "configs/pretrain_dbarf.txt",
+                "--rootdir",
+                "data/ibrnet/train",
+                "--ckpt_path",
+                // "/home/gyy/Downloads/dgaussin_train/dgaussian/checkpoint/dbarf_model_200000.pth",                
+                // "data/ibrnet/train/out/waymo/model/model_005000.pth",
+                "data/ibrnet/train/out/waymo_003_dbarf_ft/model/model_030000.pth",
+                // "pretrain_ibrent/pretrained/dbarf_ibrnet_260000.pth",
+                // "pretrain_ibrent/pretrained/dbarf_ibrnet_255000.pth",
+                "--train_dataset",
+                "waymo",
+                "--eval_dataset",
+                "waymo",
+                "--eval_scenes",
+                "003"
             ]
             // "args": ["--config", "configs/pretrain_dbarf.txt", "--rootdir", "data/ibrnet/train", "--ckpt_path", "model_zoo/dbarf_model_200000.pth" , "--eval_scenes", "room"]
         },
@@ -71,7 +119,7 @@
                 "configs/pretrain_dbarf.txt",
                 "--rootdir",
                 "data/ibrnet/train",
-                "--ckpt_path",
+                "--ckpt_path", 
                 "pretrain_ibrent/pretrained/dbarf_ibrnet_255000.pth",
                 // "/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/waymo/model/model_025000.pth",
                 "--expname", "waymo_ibrnet_1"
@@ -101,7 +149,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "7",
+                "CUDA_VISIBLE_DEVICES": "0",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "test:dgaussian-2",
@@ -114,15 +162,41 @@
                 "++rootdir=data/ibrnet/eval",
                 // "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_001000.pth",
                 // "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_002000.pth",
-                "+ckpt_path=data/ibrnet/train/out/finetune/model/model_003500.pth",
+                "+ckpt_path=model_zoo/re10k_resnet.pth",
+                // "+ckpt_path=model_zoo/20000_dgassians.ckpt",
+                "++eval_dataset=llff_test",
                 "++eval_scenes=[room]",
-                "++num_source_views=7",
+                "++num_source_views=5",
                 "++expname=test"
             ]
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "7",
+                "CUDA_VISIBLE_DEVICES": "0",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "jieou:dgaussian",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=data/ibrnet/train/out/low_res_room/model/model_005000.pth", // 使用低分辨率ft的权重试试
+                "++eval_scenes=[036]",
+                "++num_source_views=2",
+                "++expname=finetune",
+                "++train_dataset=waymo",
+                "++eval_dataset=waymo",
+                "++train_scenes=[036]",
+                "++render_video=False"
+            ]
+        },
+
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "train:gaussian",
@@ -134,8 +208,8 @@
             "args": [
                 "++rootdir=data/ibrnet/train",
                 "+ckpt_path=data/ibrnet/train/out/low_res_room/model/model_005000.pth", // 使用低分辨率ft的权重试试
-                "++eval_scenes=[room]",
-                "++num_source_views=7",
+                "++eval_scenes=[trex]",
+                "++num_source_views=5",
                 "++expname=finetune"
             ]
         },

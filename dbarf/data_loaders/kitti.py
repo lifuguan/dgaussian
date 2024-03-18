@@ -1,33 +1,20 @@
-# Copyright 2020 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-import enum
+import logging
 import os
-import numpy as np
-import imageio
-import torch
-import sys
-sys.path.append('../')
-from torch.utils.data import Dataset
-from .data_utils import get_nearby_view_ids, random_crop, get_nearest_pose_ids
-from .llff_data_utils import load_llff_data, batch_parse_llff_poses
-from ..pose_util import PoseInitializer
+from typing import Dict
 
-import random
+import numpy as np
+import torch
+from omegaconf import OmegaConf
+from torch import Tensor
+from tqdm import trange
+from torch.utils.data import Dataset
+import imageio
 from .base_utils import downsample_gaussian_blur
 import cv2
+from .data_utils import get_nearby_view_ids, random_crop, get_nearest_pose_ids
 
+
+logger = logging.getLogger()
 
 def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
     h, w = rgb.shape[:2]
@@ -51,72 +38,90 @@ def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
                 src_rgb, ratio_y), (out_w, out_h), interpolation=cv2.INTER_LINEAR) for src_rgb in src_rgbs]
     src_rgbs = np.stack(src_rgbs, axis=0)
     return rgb, camera, src_rgbs, src_cameras, intrinsics[..., :3, :3], src_intrinsics[..., :3, :3]
+def read_pose(line):
+    '''
+    Reading 4x4 pose matrix from .txt files
+    input: a line of 12 parameters
+    output: 4x4 numpy matrix
+    '''
+    values= np.reshape(np.array([float(value) for value in line.split(' ')]), (3, 4))
+    Rt = np.concatenate((values, np.array([[0, 0, 0, 1]])), 0)
+    return Rt
+    
+def read_pose_from_text(path):
+    with open(path) as f:
+        lines = [line.split('\n')[0] for line in f.readlines()]
+        poses_rel, poses_abs = [], []
+        values_p = read_pose(lines[0])
+        poses_abs.append(values_p)            
+        for i in range(1, len(lines)):
+            values = read_pose(lines[i])
+            # poses_rel.append(get_relative_pose_6DoF(values_p, values)) 
+            values_p = values.copy()
+            poses_abs.append(values) 
+        poses_abs = np.array(poses_abs)
+        # poses_rel = np.array(poses_rel)
+    
+    return poses_abs
+    # return poses_abs, poses_rel
 
-class WaymoStaticDataset(Dataset):
-    ORIGINAL_SIZE = [[1280, 1920], [1280, 1920], [1280, 1920], [884, 1920], [884, 1920]]
+
+
+class KittiPixelSource(Dataset):
+    # ORIGINAL_SIZE = [[1280, 1920], [1280, 1920], [1280, 1920], [884, 1920], [884, 1920]]
+    ORIGINAL_SIZE = [[376, 1241]]
     OPENCV2DATASET = np.array(
         [[0, 0, 1, 0], [-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]]
     )
-    def __init__(self, args, mode, scenes=(), random_crop=True, **kwargs):
-        self.folder_path = os.path.join('data/waymo/data_static/waymo/processed/training')
-        self.dataset_name = 'waymo'
-        self.pose_noise_level = 0
 
+    def __init__(self, args, mode, scenes=(), random_crop=True, **kwargs):
+        self.folder_path = os.path.join('/home/gyy/Downloads/dgaussian/data/kitti/data')
+        self.data_path=self.folder_path
+        self.num_cams, self.camera_list =1, [0]
+        self.mode = mode 
+        self.start_timestep, self.end_timestep = 0, 4070
         self.args = args
-        self.mode = mode # if args.render_video is not True else "train"  # train / test / validation
-        self.num_source_views = args.num_source_views
-        self.random_crop = random_crop
+        self.num_source_views = args.num_source_views               
         self.render_rgb_files = []
         self.render_intrinsics = []
         self.render_poses = []
         self.render_train_set_ids = []
         self.render_depth_range = []
-
+        self.image_size = (176,608)
         self.train_intrinsics = []
         self.train_poses = []
         self.train_rgb_files = []
         self.idx_to_node_id_list = []
         self.node_id_to_idx_list = []
         self.train_view_graphs = []
-    
-        self.image_size = (640,960)
-        self.ratio = self.image_size[1] / 1920
-        all_scenes = os.listdir(self.folder_path) 
-    
-        
-        
-        ############     Wamyo Parameters     ############
-        self.num_cams, self.camera_list =1, [0]
-        # self.num_cams, self.camera_list =3, [1, 0, 2]
-        
-        self.start_timestep, self.end_timestep = 0, 198
+        all_scenes = os.listdir(os.path.join(self.data_path, "sequences")) 
+
         if len(scenes) > 0:
             if isinstance(scenes, str):
                 scenes = [scenes]
         else:
             scenes = all_scenes
-
         print("loading {} for {}".format(scenes, mode))
         print(f'[INFO] num scenes: {len(scenes)}')
+
         for i, scene in enumerate(scenes):
-            scene_path = os.path.join(self.folder_path, scene)
-            
+            scene_path = os.path.join(self.folder_path, "sequences", f"{scene}")
             rgb_files = []
             i_test,count = [], 0
             for t in range(self.start_timestep, self.end_timestep):
                 for cam_idx in self.camera_list:
                     if cam_idx == 0:
                         i_test.append(count)
-                    rgb_files.append(os.path.join(scene_path, "images", f"{t:03d}_{cam_idx}.jpg"))
+                    rgb_files.append(os.path.join(scene_path,  "image_2", f"{t:06d}.png"))
                     count += 1
-            
-            intrinsics, c2w_mats = self.load_calibrations(scene_path)
+            self.scene_idx=scene
+            intrinsics, c2w_mats = self.load_calibrations()
             
             
             near_depth = 1
             far_depth = 100
             
-            i_test = i_test[::self.args.llffhold] if mode != 'eval_pose' else []
+            i_test = i_test[::41] if mode != 'eval_pose' else []
             i_train = np.array([j for j in np.arange(len(rgb_files)) if
                                 (j not in i_test and j not in i_test)])
             
@@ -144,46 +149,52 @@ class WaymoStaticDataset(Dataset):
             self.render_train_set_ids.extend([i]*num_render)
 
 
-    def load_calibrations(self, scene_path):
+    def load_calibrations(self):
         """
         Load the camera intrinsics, extrinsics, timestamps, etc.
         Compute the camera-to-world matrices, ego-to-world matrices, etc.
         """
+        
         # to store per-camera intrinsics and extrinsics
-        _intrinsics = []
-        cam_to_egos = []
+        cam_to_egos, _intrinsics = [], []
+        # if True:
         for i in range(self.num_cams):
             # load camera intrinsics
             # 1d Array of [f_u, f_v, c_u, c_v, k{1, 2}, p{1, 2}, k{3}].
             # ====!! we did not use distortion parameters for simplicity !!====
             # to be improved!!
-            intrinsic = np.loadtxt(
-                os.path.join(scene_path, "intrinsics", f"{i}.txt")
-            )
-            fx, fy, cx, cy = intrinsic[0], intrinsic[1], intrinsic[2], intrinsic[3]
+            intric = np.genfromtxt(
+                os.path.join(self.data_path, "sequences", f"{self.scene_idx}", "calib.txt")
+            ).astype(np.float32)
+            new_intric = intric[:,1:]
+            new_intric1 = np.zeros((new_intric.shape[0],3,4))
+            for j in range(new_intric.shape[0]):
+                new_intric1[j] = new_intric[j].reshape(3,4)
+            intrinsic = new_intric1[2,:,:3]
+            fx, fy, cx, cy = intrinsic[0][0], intrinsic[1][1], intrinsic[0][2], intrinsic[1][2]
             # scale intrinsics w.r.t. load size
             fx, fy = (
-                fx * self.image_size[1] / self.ORIGINAL_SIZE[i][1],
+                fx *  self.image_size[1] / self.ORIGINAL_SIZE[i][1],
                 fy * self.image_size[0] / self.ORIGINAL_SIZE[i][0],
             )
             cx, cy = (
                 cx * self.image_size[1] / self.ORIGINAL_SIZE[i][1],
                 cy * self.image_size[0] / self.ORIGINAL_SIZE[i][0],
             )
-            # intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
             intrinsic = np.array([[fx, 0, cx,0], [0, fy, cy,0], [0, 0, 1, 0], [0, 0, 0, 1]])
+            # intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
             _intrinsics.append(intrinsic)
 
             # load camera extrinsics
-            cam_to_ego = np.loadtxt(
-                os.path.join(scene_path, "extrinsics", f"{i}.txt")
-            )
+            # cam_to_ego = np.loadtxt(
+            #     os.path.join(self.data_path, "extrinsics", f"{i}.txt")
+            # )
             # because we use opencv coordinate system to generate camera rays,
             # we need a transformation matrix to covnert rays from opencv coordinate
             # system to waymo coordinate system.
             # opencv coordinate system: x right, y down, z front
             # waymo coordinate system: x front, y left, z up
-            cam_to_egos.append(cam_to_ego @ self.OPENCV2DATASET)
+            # cam_to_egos.append(cam_to_ego @ self.OPENCV2DATASET)
 
         # compute per-image poses and intrinsics
         cam_to_worlds, ego_to_worlds = [], []
@@ -193,32 +204,43 @@ class WaymoStaticDataset(Dataset):
 
         # we tranform the camera poses w.r.t. the first timestep to make the translation vector of
         # the first ego pose as the origin of the world coordinate system.
-        ego_to_world_start = np.loadtxt(
-            os.path.join(scene_path, "ego_pose", f"{self.start_timestep:03d}.txt")
-        )
+        # ego_to_world_start = np.loadtxt(
+        #     os.path.join(self.data_path, "ego_pose", f"{self.start_timestep:03d}.txt")
+        # )
         for t in range(self.start_timestep, self.end_timestep):
-            ego_to_world_current = np.loadtxt(
-                os.path.join(scene_path, "ego_pose", f"{t:03d}.txt")
-            )
-            # compute ego_to_world transformation
-            ego_to_world = np.linalg.inv(ego_to_world_start) @ ego_to_world_current
-            ego_to_worlds.append(ego_to_world)
+            # ego_to_world_current = np.loadtxt(
+            #     os.path.join(self.data_path, "ego_pose", f"{t:03d}.txt")
+            # )
+            # # compute ego_to_world transformation
+            # ego_to_world = np.linalg.inv(ego_to_world_start) @ ego_to_world_current
+            # ego_to_worlds.append(ego_to_world)
             for cam_id in self.camera_list:
                 cam_ids.append(cam_id)
                 # transformation:
                 #   (opencv_cam -> waymo_cam -> waymo_ego_vehicle) -> current_world
-                cam2world = ego_to_world @ cam_to_egos[cam_id]
-                cam_to_worlds.append(cam2world)
+                # cam2world = ego_to_world @ cam_to_egos[cam_id]
+                # cam_to_worlds.append(cam2world)
                 intrinsics.append(_intrinsics[cam_id])
                 # ===! we use time indices as the timestamp for waymo dataset for simplicity
                 # ===! we can use the actual timestamps if needed
                 # to be improved
                 timestamps.append(t - self.start_timestep)
                 timesteps.append(t - self.start_timestep)
+        # if self.pixel_data_config.use_dynamo_poses:
+        #     cam_to_worlds = read_pose_from_text(os.path.join(self.data_path, "pred_poses_09.txt"))[:self.end_timestep]
+        # else:
+        cam_to_worlds = read_pose_from_text(os.path.join(self.data_path, "poses", f"{self.scene_idx}.txt"))[:self.end_timestep]
+        self.intrinsics = np.stack(intrinsics, axis=0)
+        self.cam_to_worlds =cam_to_worlds
+        # self.ego_to_worlds = torch.from_numpy(np.stack(ego_to_worlds, axis=0)).float()
+        self.cam_ids = np.stack(cam_ids, axis=0)
 
-        intrinsics = np.stack(intrinsics, axis=0)
-        cam_to_worlds = np.stack(cam_to_worlds, axis=0)
-        return intrinsics, cam_to_worlds
+        # the underscore here is important.
+        self._timestamps = torch.from_numpy(np.stack(timestamps, axis=0)).float()
+        self._timesteps = torch.from_numpy(np.stack(timesteps, axis=0)).long()
+        return self.intrinsics,self.cam_to_worlds
+        
+
 
 
     def get_data_one_batch(self, idx, nearby_view_id=None):
@@ -288,7 +310,7 @@ class WaymoStaticDataset(Dataset):
         if self.mode == 'eval_pose' and self.nearby_view_id is not None:
             nearest_pose_ids = np.array([self.nearby_view_id])
 
-        nearest_pose_ids = np.random.choice(nearest_pose_ids, min(num_select, len(nearest_pose_ids)), replace=False)
+        # nearest_pose_ids = np.random.choice(nearest_pose_ids, min(num_select, len(nearest_pose_ids)), replace=False)
         # print(f'nearest pose ids: {nearest_pose_ids}')
 
         assert id_render not in nearest_pose_ids
@@ -382,3 +404,4 @@ class WaymoStaticDataset(Dataset):
         intrinsics_normalized[:, 0, 2] = 0.5
         intrinsics_normalized[:, 1, 2] = 0.5
         return intrinsics_normalized
+

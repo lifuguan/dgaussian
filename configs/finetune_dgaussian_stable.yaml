@@ -23,7 +23,7 @@ eval_scenes : [room]
 # eval_scenes : [trex, fern, flower, leaves, room, fortress, horns, orchids]
 
 num_source_views : 8
-workers : 8
+workers : 1
 
 selection_rule : pose
 random_crop : False

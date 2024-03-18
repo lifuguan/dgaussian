@@ -87,6 +87,31 @@ class GaussianTrainer(BaseTrainer):
         self.state_dicts = {'models': dict(), 'optimizers': dict(), 'schedulers': dict()}
         self.state_dicts['models']['gaussian'] = self.model.gaussian_model
 
+
+    def demorender(self, data_batch) -> None:
+        ######################### 3-stages training #######################
+        # ---- (1) Train the pose optimizer with self-supervised loss.<---|
+        # |             (10000 iterations)                                |
+        # |--> (2) Train ibrnet while fixing the pose optimizer.          |
+        # |             (10000 iterations)                                |
+        # |--> (3) Jointly train the pose optimizer and ibrnet.           |
+        # |             (10000 iterations)                                |
+        # |-------------------------->------------------------------------|
+        if self.iteration == 0:
+            self.state = self.model.switch_state_machine(state='nerf_only')
+        # batch = self.model.gaussian_model.data_shim(batch_)
+        with torch.no_grad():
+            batch = data_shim(data_batch, device=self.device)
+            batch = self.model.gaussian_model.data_shim(batch)
+            self.model.gaussian_model.Gaussians_save(batch, self.iteration)
+       
+
+        # if self.config.local_rank == 0 and self.iteration % self.config.n_tensorboard == 0:
+        #     mse_error = img2mse(ret['rgb'], data_gt['rgb']).item()
+        #     self.scalars_to_log['train/coarse-loss'] = mse_error
+        #     self.scalars_to_log['train/coarse-psnr'] = mse2psnr(mse_error)
+
+
     def train_iteration(self, data_batch) -> None:
         ######################### 3-stages training #######################
         # ---- (1) Train the pose optimizer with self-supervised loss.<---|
@@ -114,8 +139,8 @@ class GaussianTrainer(BaseTrainer):
         # import imageio
         # rgb=ret['rgb'].cpu().squeeze(0).squeeze(0)
         _, _, _, h, w = batch["target"]["image"].shape
-        out_h=176
-        out_w=240
+        out_h=160
+        out_w=224
         row=ceil(h/out_h)
         col=ceil(w/out_w)
         # features=self.model.gaussian_model.encoder.backbone(batch['context'])

@@ -13,7 +13,7 @@ enable_visdom : False
 seed : 3407
 pretrained : False
 local_rank : 0
-
+render_video : False
 ## dataset
 train_dataset : llff_test
 train_scenes : [room]
@@ -24,7 +24,7 @@ eval_scenes : [room]
 # eval_scenes : [room]
 
 num_source_views : 5
-workers : 8
+workers : 1
 
 selection_rule : pose
 random_crop : False

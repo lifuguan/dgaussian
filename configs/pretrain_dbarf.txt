@@ -12,7 +12,7 @@ render_video =False
 train_dataset = waymo
 dataset_weights = [0.5, 0.5]
 eval_dataset = waymo
-eval_scenes = [003]
+eval_scenes = [019]
 num_source_views = 5
 selection_rule = pose
 
@@ -38,6 +38,8 @@ white_bkgd = False
 
 ### CONSOLE AND TENSORBOARD
 n_validation = 2000
-n_tensorboard = 100
+n_tensorboard = 10
 n_checkpoint = 5000
 visdom_port = 9000
+no_load_opt = True
+no_load_scheduler = True
