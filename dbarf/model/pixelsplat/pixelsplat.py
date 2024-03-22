@@ -239,7 +239,7 @@ class PixelSplat(nn.Module):
                     depth_mode='depth'
                 )
                 
-                if Ture:
+                if False:
                     output_ref = self.decoder.forward(
                     gaussians,
                     batch["context"]["extrinsics"],
