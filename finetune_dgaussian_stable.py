@@ -337,7 +337,7 @@ def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='',
 
     batch = data_shim(data, device=device)
     batch = model.gaussian_model.data_shim(batch)
-    ret, data_gt,ret_ref,data_ref = model.gaussian_model(batch, global_step)
+    ret, data_gt = model.gaussian_model(batch, global_step)
         
 
     average_im = batch['context']['image'].cpu().mean(dim=(0, 1))

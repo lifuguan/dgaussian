@@ -27,7 +27,7 @@ from ..pose_util import PoseInitializer
 
 import random
 from .base_utils import downsample_gaussian_blur
-import cv2
+
 
 
 def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
@@ -60,7 +60,7 @@ class WaymoStaticDataset(Dataset):
     )
     def __init__(self, args, mode, scenes=(), random_crop=True, **kwargs):
         if mode == 'test' or len(scenes) > 0:
-            self.folder_path = os.path.join('data/waymo/testing')
+            self.folder_path = os.path.join('data/waymo/data_static/waymo/processed/training')
         else:
             self.folder_path = os.path.join('data/waymo/training')
         self.dataset_name = 'waymo'
@@ -88,8 +88,8 @@ class WaymoStaticDataset(Dataset):
             self.image_size = (352, 480)
         else:
             # self.image_size = (228, 320)
-            # self.image_size = (352, 480)
-            self.image_size = (640,960)        
+            self.image_size = (352, 480)
+            # self.image_size = (640,960)        
         all_scenes = os.listdir(self.folder_path)
     
         ############     Wamyo Parameters     ############
@@ -238,7 +238,7 @@ class WaymoStaticDataset(Dataset):
         return len(self.render_rgb_files)
 
     def __len__(self):
-        return len(self.render_rgb_files) 
+        return len(self.render_rgb_files) * 100000 if self.mode == 'train' and self.args.render_video is not True else len(self.render_rgb_files)
 
     def __getitem__(self, idx):
         idx = idx % len(self.render_rgb_files)
@@ -270,9 +270,13 @@ class WaymoStaticDataset(Dataset):
             else:
                 id_render = -1
             subsample_factor = np.random.choice(np.arange(1, 4), p=[0.2, 0.45, 0.35])
-            num_select = self.num_source_views + np.random.randint(low=-2, high=2)
+            num_select = self.num_source_views 
+            # + np.random.randint(low=-2, high=2)
         else:
-            id_render = -1
+            if rgb_file in train_rgb_files:
+                id_render = train_rgb_files.index(rgb_file)
+            else:
+                id_render = -1
             subsample_factor = 1
             num_select = self.num_source_views
 
@@ -349,7 +353,6 @@ class WaymoStaticDataset(Dataset):
         else:
             scale = 1
 
-        
         return {'rgb': torch.from_numpy(pix_rgb[..., :3]),
                 'camera': torch.from_numpy(camera),
                 'rgb_path': rgb_file,

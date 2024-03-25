@@ -248,10 +248,10 @@ def eval(cfg_dict: DictConfig):
             batch = data_shim(data, device="cuda:0")
             batch = gaussian_model.data_shim(batch)       
             output, gt_rgb = gaussian_model(batch, i)
-            depth = depth_map(output['depth'][0][0])
-            depth = depth.detach().cpu().permute(1, 2, 0)
-            # depth = depth_map(output['depth'][0])
-            # depth = depth.detach().cpu().permute(0,2, 3, 1)
+            # depth = depth_map(output['depth'][0][0])
+            # depth = depth.detach().cpu().permute(1, 2, 0)
+            depth = depth_map(output['depth'][0])
+            depth = depth.detach().cpu().permute(0,2, 3, 1)
             gt_rgb = gt_rgb['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
             coarse_pred_rgb = output['rgb'].detach().cpu()[0][0].permute(1, 2, 0)
             coarse_err_map = torch.sum((coarse_pred_rgb - gt_rgb) ** 2, dim=-1).numpy()
@@ -319,7 +319,7 @@ def eval(cfg_dict: DictConfig):
                 # v,_,_,_ = depth.shape
                 # for i in range(v): 
                 #     video_depth_pred.append(depth[i])
-                # imageio.mimwrite(os.path.join(out_scene_dir, 'video_depth_pred_interplate.mp4'), video_depth_pred, fps=10, quality=8)
+                # imageio.mimwrite(os.path.join(out_scene_dir, 'video_depth_ref.mp4'), video_depth_pred, fps=10, quality=8)
                 
             # saving outputs ...
             imageio.imwrite(os.path.join(out_scene_dir, '{}_average.png'.format(file_id)),averaged_img)

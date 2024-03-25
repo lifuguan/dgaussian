@@ -24,7 +24,7 @@ eval_scenes : [room]
 # eval_scenes : [room]
 
 num_source_views : 5
-workers : 1
+workers : 
 
 selection_rule : pose
 random_crop : False

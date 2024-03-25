@@ -152,7 +152,7 @@ class PixelSplat(nn.Module):
             (h, w),
             depth_mode='depth'
             )
-            if False:
+            if True:
                 output_ref = self.decoder.forward(
                         gaussians,
                         batch["context"]["extrinsics"],
@@ -166,8 +166,9 @@ class PixelSplat(nn.Module):
                 # ret_ref = {'rgb': output_ref.color, 'depth': output_ref.depth}
                 # target_gt = {'rgb': batch["target"]["image"]}
                 # target_gt_ref = {'rgb': batch["context"]["image"]}
+                output.color = torch.cat([output.color,output_ref.color], dim = 1)
                 ret = {'rgb': output.color, 'depth': output.depth}
-                target_gt = {'rgb': torcg.cat([batch["target"]["image"],batch["context"]["image"]],dim = 1)}
+                target_gt = {'rgb': torch.cat([batch["target"]["image"],batch["context"]["image"]],dim = 1)}
                 return ret,target_gt
             else :
                 ret = {'rgb': output.color, 'depth': output.depth}
@@ -239,7 +240,7 @@ class PixelSplat(nn.Module):
                     depth_mode='depth'
                 )
                 
-                if Ture:
+                if True:
                     output_ref = self.decoder.forward(
                     gaussians,
                     batch["context"]["extrinsics"],
@@ -250,10 +251,10 @@ class PixelSplat(nn.Module):
                     depth_mode='depth'
                 )
                     output.color = torch.cat([output.color,output_ref.color], dim = 1)
-                    
+                    output.depth = torch.cat([output.depth,output_ref.depth], dim = 1)
                     ret = {'rgb': output.color, 'depth': output.depth}
                     # ret_ref = {'rgb': output_ref.color, 'depth': output_ref.depth}
-                    target_gt = {'rgb': torcg.cat([batch["target"]["image"],batch["context"]["image"]],dim = 1)}
+                    target_gt = {'rgb': torch.cat([batch["target"]["image"],batch["context"]["image"]],dim = 1)}
                     # target_gt_ref = {'rgb': batch["context"]["image"]}
                     return ret,target_gt
                 else :

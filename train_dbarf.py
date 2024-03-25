@@ -120,8 +120,6 @@ class DBARFTrainer(IBRNetTrainer):
                           white_bkgd=args.white_bkgd,
                           inv_depth_prior=None, #inv_depth_prior, # TODO(chenyu): enabling the adaptive sampling when well tuned
                           rel_poses=pred_rel_poses[:, -1, :]
-                          inv_depth_prior=None, #inv_depth_prior, # TODO(chenyu): enabling the adaptive sampling when well tuned
-                          rel_poses=pred_rel_poses[:, -1, :]
                         )
 
         loss_all = 0
