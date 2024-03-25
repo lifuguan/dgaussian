@@ -25,7 +25,7 @@
             "console": "integratedTerminal"
         },
         {
-            "env": {"CUDA_VISIBLE_DEVICES": "0",},
+            "env": {"CUDA_VISIBLE_DEVICES": "0"},
             "name": "train:dbarf",
             "type": "python",
             "request": "launch",
@@ -160,14 +160,16 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/eval",
-                // "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_001000.pth",
-                // "+ckpt_path=/home/gyy/Downloads/dgaussian/data/ibrnet/train/out/no_depth_room_lr/model/model_002000.pth",
-                "+ckpt_path=model_zoo/re10k_resnet.pth",
-                // "+ckpt_path=model_zoo/20000_dgassians.ckpt",
-                "++eval_dataset=llff_test",
-                "++eval_scenes=[room]",
-                "++num_source_views=5",
-                "++expname=test"
+                // "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
+                // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_019/model/model_002800.pth",
+                "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003/model/model_001000.pth",
+                // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003/model/model_002500.pth",
+                // "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
+                "++eval_dataset=waymo",
+                "++eval_scenes=[003]",    
+                "++num_source_views=4",
+                "++render_video=True",
+                "++expname=ft_dgaussian_003",
             ]
         },
         {
@@ -207,9 +209,32 @@
             "justMyCode": false,
             "args": [
                 "++rootdir=data/ibrnet/train",
-                "+ckpt_path=data/ibrnet/train/out/low_res_room/model/model_005000.pth", // 使用低分辨率ft的权重试试
-                "++eval_scenes=[trex]",
-                "++num_source_views=5",
+                // "+ckpt_path=data/ibrnet/train/out/low_res_room/model/model_005000.pth", // 使用低分辨率ft的权重试试
+                "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
+                // "+ckpt_path=data/ibrnet/train/out/llff_generalized_room28.pth",
+                "++eval_scenes=[room]",
+                "++num_source_views=7",
+                "++expname=finetune"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "train:gaussian",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_dgaussian_stable.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                // "+ckpt_path=data/ibrnet/train/out/low_res_room/model/model_005000.pth", // 使用低分辨率ft的权重试试
+                "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
+                // "+ckpt_path=data/ibrnet/train/out/llff_generalized_room28.pth",
+                "++eval_scenes=[room]",
+                "++num_source_views=7",
                 "++expname=finetune"
             ]
         },
@@ -250,6 +275,32 @@
         },
         {
             "env": {
+                "CUDA_VISIBLE_DEVICES": "4",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "finetune:dgaussian-waymo",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/finetune_dgaussian_stable.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth",    // zui you fanhua
+                // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003_ref_loss/model/model_001000.pth",
+                "++train_dataset=waymo",
+                "++eval_dataset=waymo",
+                "++eval_scenes=[003]",
+                "++train_scenes=[003]",
+                "++num_source_views=4",
+                "++expname=ft_dgaussian_003_ref_loss",
+                "++use_depth_loss=False",
+                "++use_pred_pose=True",
+                "++render_video=False"
+            ]
+        },
+        {
+            "env": {
                 "CUDA_VISIBLE_DEVICES": "0",
                 "PYTHONPATH": "${workspaceFolder}"
             },
@@ -267,6 +318,137 @@
                 "++num_source_views=8",
                 "++expname=test",
                 "++use_depth_loss=True"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "finetune:gaussian-trex",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
+                "++train_scenes=[trex]",
+                "++eval_scenes=[trex]",
+                "++num_source_views=7",
+                "++expname=ft_trex"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "finetune:gaussian-fortress",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
+                "++train_scenes=[fortress]",
+                "++eval_scenes=[fortress]",
+                "++num_source_views=7",
+                "++expname=ft_fortress"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "3",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "finetune:gaussian-fern",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
+                "++train_scenes=[fern]",
+                "++eval_scenes=[fern]",
+                "++num_source_views=7",
+                "++expname=ft_fern"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "3",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "finetune:gaussian-orchids",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
+                "++train_scenes=[orchids]",
+                "++eval_scenes=[orchids]",
+                "++num_source_views=7",
+                "++llffhold=10",
+                "++expname=ft_orchids"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "6",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "finetune:gaussian-003",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_gaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                // "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpπt",  // deferred 泛化权重
+                // "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
+                "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003/model/model_000500.pth",
+                // "+ckpt_path=data/ibrnet/train/out/ft_019/model/model_000200.pth",  // deferred 泛化权重
+                "++train_dataset=waymo",
+                "++train_scenes=[003]",
+                "++eval_dataset=waymo",
+                "++eval_scenes=[003]",
+                "++num_source_views=4",
+                "++render_video=False",
+                "++expname=ft_003"
+            ]
+        },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "test:dgaussian-waymo",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval/eval_dgaussian.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/eval",
+                // "+ckpt_path=data/ibrnet/train/out/ft_waymo_003/generalized_waymo_best.pth", 
+                "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
+                "++train_dataset=waymo",
+                "++train_scenes=[019]",
+                "++eval_dataset=waymo",
+                "++eval_scenes=['081']",
+                "++num_source_views=5",
+                "++render_video=False",
+                "++expname=test"
             ]
         },
     ]

@@ -9,12 +9,19 @@ from torch import Tensor
 from tqdm import trange
 from torch.utils.data import Dataset
 import imageio
-from .base_utils import downsample_gaussian_blur
 import cv2
-from .data_utils import get_nearby_view_ids, random_crop, get_nearest_pose_ids
-
+# from .data_utils import get_nearby_view_ids, random_crop, get_nearest_pose_ids
+from .data_utils import  random_crop, get_nearest_pose_ids
 
 logger = logging.getLogger()
+
+def downsample_gaussian_blur(img, ratio):
+    sigma = (1 / ratio) / 3
+    # ksize=np.ceil(2*sigma)
+    ksize = int(np.ceil(((sigma - 0.8) / 0.3 + 1) * 2 + 1))
+    ksize = ksize + 1 if ksize % 2 == 0 else ksize
+    img = cv2.GaussianBlur(img, (ksize, ksize), sigma, borderType=cv2.BORDER_REFLECT101)
+    return img
 
 def loader_resize(rgb, camera, src_rgbs, src_cameras, size=(400, 600)):
     h, w = rgb.shape[:2]
@@ -75,11 +82,11 @@ class KittiPixelSource(Dataset):
     )
 
     def __init__(self, args, mode, scenes=(), random_crop=True, **kwargs):
-        self.folder_path = os.path.join('/home/gyy/Downloads/dgaussian/data/kitti/data')
+        self.folder_path = os.path.join('data/kitti')
         self.data_path=self.folder_path
         self.num_cams, self.camera_list =1, [0]
         self.mode = mode 
-        self.start_timestep, self.end_timestep = 0, 4070
+        self.start_timestep, self.end_timestep = 0, 150
         self.args = args
         self.num_source_views = args.num_source_views               
         self.render_rgb_files = []
@@ -87,7 +94,7 @@ class KittiPixelSource(Dataset):
         self.render_poses = []
         self.render_train_set_ids = []
         self.render_depth_range = []
-        self.image_size = (176,608)
+        self.image_size = (144,464) # (176,608)
         self.train_intrinsics = []
         self.train_poses = []
         self.train_rgb_files = []
@@ -121,7 +128,7 @@ class KittiPixelSource(Dataset):
             near_depth = 1
             far_depth = 100
             
-            i_test = i_test[::41] if mode != 'eval_pose' else []
+            i_test = i_test[::self.args.llffhold] if mode != 'eval_pose' else []
             i_train = np.array([j for j in np.arange(len(rgb_files)) if
                                 (j not in i_test and j not in i_test)])
             
@@ -376,6 +383,7 @@ class KittiPixelSource(Dataset):
                 'src_rgbs': torch.from_numpy(pix_src_rgbs[..., :3]),
                 'src_cameras': torch.from_numpy( src_cameras),
                 'depth_range': depth_range,
+                'scene': ['04'],
                 'idx': idx,
                 'scaled_shape': (0, 0), # (378, 504)
                 "context": {
@@ -384,7 +392,7 @@ class KittiPixelSource(Dataset):
                         "image": torch.from_numpy(pix_src_rgbs[..., :3]).permute(0, 3, 1, 2),
                         "near":  depth_range[0].repeat(num_select) / scale,
                         "far": depth_range[1].repeat(num_select) / scale,
-                        "index": src_name,
+                        "index": torch.tensor([int(i) for i in src_name]),
                 },
                 "target": {
                         "extrinsics": pix_extrinsics,

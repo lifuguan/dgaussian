@@ -120,13 +120,14 @@ class GaussianTrainer(BaseTrainer):
         # |             (10000 iterations)                                |
         # |--> (3) Jointly train the pose optimizer and ibrnet.           |
         # |             (10000 iterations)                                |
+        # |-----------_state_machine(state='nerf_only')
         # |-------------------------->------------------------------------|
+        self.optimizer.zero_grad()
         if self.iteration == 0:
             self.state = self.model.switch_state_machine(state='nerf_only')
-        self.optimizer.zero_grad()
         # batch = self.model.gaussian_model.data_shim(batch_)
         with torch.no_grad():
-            batch = data_shim(data_batch, device=self.device)
+            batch = data_shim(batch, device=self.device)
             batch = self.model.gaussian_model.data_shim(batch)
             ret, data_gt = self.model.gaussian_model(batch, self.iteration)
         ret['rgb'].requires_grad_(True)
@@ -135,9 +136,8 @@ class GaussianTrainer(BaseTrainer):
         rgb_pred_grad=ret['rgb'].grad
         
         
+        # ret_rgb
         #随机裁剪中心
-        # import imageio
-        # rgb=ret['rgb'].cpu().squeeze(0).squeeze(0)
         _, _, _, h, w = batch["target"]["image"].shape
         out_h=160
         out_w=224
@@ -165,33 +165,31 @@ class GaussianTrainer(BaseTrainer):
                     ret_patch, data_gt_patch = self.model.gaussian_model(data_crop, self.iteration,i,j)
         # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch)
         # coarse_loss.backward()
-                ret_patch['rgb']=ret_patch['rgb'][:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]
-                ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2])
+                ret_patch['rgb']=ret_patch['rgb'][:,:,:,out_h*i : out_h*(i+1), out_w*j : out_w*(j+1)]
+                # mask = torch.zeros_like(ret_patch['rgb'])
+                # mask[:,:,:,center_h - out_h // 2:center_h + out_h // 2, center_w - out_w // 2:center_w + out_w // 2]=1
+                # mask = mask.to(self.device)
+                # coarse_loss = self.rgb_loss(ret_patch, data_gt_patch*mask)
+                # coarse_loss.backward()
+                ret_patch['rgb'].backward(rgb_pred_grad[:,:,:,out_h*i : out_h*(i+1), out_w*j : out_w*(j+1)])
         self.optimizer.step()
         self.scheduler.step()
-        loss_all = 0
-        loss_dict = {}
         # compute loss
         coarse_loss = self.rgb_loss(ret, data_gt)
-        loss_dict['gaussian_loss'] = coarse_loss
-        loss_all += loss_dict['gaussian_loss']
         # with torch.autograd.detect_anomaly():
        
 
         if self.config.local_rank == 0 and self.iteration % self.config.n_tensorboard == 0:
-            mse_error = img2mse(ret['rgb'], data_gt['rgb']).item()
+            mse_error = img2mse(ret['rgb'], data_gt['rgb']).item(); psnr = mse2psnr(mse_error)
             self.scalars_to_log['train/coarse-loss'] = mse_error
-            self.scalars_to_log['train/coarse-psnr'] = mse2psnr(mse_error)
-            self.scalars_to_log['loss/final'] = loss_all.item()
-            self.scalars_to_log['loss/rgb_coarse'] = coarse_loss
-            # print(f"corse loss: {mse_error}, psnr: {mse2psnr(mse_error)}")
+            self.scalars_to_log['train/coarse-psnr'] = psnr
             self.scalars_to_log['lr/Gaussian'] = self.scheduler.get_last_lr()[0]
+            print(f"train step: {self.iteration}; target: {int(batch['target']['index'][0])}; ref: {batch['context']['index']}; loss: {mse_error:.4f}, psnr: {psnr:.2f}")
         
     def validate(self) -> float:
         self.model.switch_to_eval()
 
         target_image = self.train_data['rgb'].squeeze(0).permute(2, 0, 1)
-
         self.writer.add_image('train/target_image', target_image, self.iteration)
 
         # Logging a random validation view.
@@ -210,7 +208,7 @@ class GaussianTrainer(BaseTrainer):
 @torch.no_grad()
 def log_view_to_tb(writer, global_step, args, model, render_stride=1, prefix='', data=None, dataset=None, device=None) -> float:
 
-
+    print(f"validation step: {global_step}; target: {data['target']['index']}; ref: {data['context']['index']}")
     batch = data_shim(data, device=device)
     batch = model.gaussian_model.data_shim(batch)
 

@@ -104,8 +104,8 @@ class DGaussianTrainer(BaseTrainer):
             target_pose = data_batch['camera'][0,-16:].reshape(-1, 4, 4).repeat(num_views, 1, 1).to(self.device)
             context_poses = self.projector.get_train_poses(target_pose, pred_rel_poses[:, -1, :])
             data_batch['context']['extrinsics'] = context_poses.unsqueeze(0).detach()
-        batch_ = data_shim(data_batch, device=self.device)
-        batch = self.model.gaussian_model.data_shim(batch_)       
+        batch = data_shim(data_batch, device=self.device)
+        batch = self.model.gaussian_model.data_shim(batch)       
         ret, data_gt = self.model.gaussian_model(batch, self.iteration)
 
         loss_all = 0

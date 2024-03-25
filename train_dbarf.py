@@ -55,7 +55,7 @@ class DBARFTrainer(IBRNetTrainer):
         self.state_dicts['optimizers']['pose_optimizer'] = self.pose_optimizer
         self.state_dicts['schedulers']['pose_scheduler'] = self.pose_scheduler
 
-    def train_iteration(self, data_batch) -> None:
+    def train_iteration(self, batch) -> None:
         ######################### 3-stages training #######################
         # ---- (1) Train the pose optimizer with self-supervised loss.<---|
         # |             (10000 iterations)                                |
@@ -72,8 +72,9 @@ class DBARFTrainer(IBRNetTrainer):
         #     self.state = self.model.switch_state_machine(state='nerf_only')
         # if self.iteration != 0 and self.iteration % 30000 == 0:
         #     self.state = self.model.switch_state_machine(state='joint')
-
-        images = torch.cat([data_batch['rgb'], data_batch['src_rgbs'].squeeze(0)], dim=0).cuda().permute(0, 3, 1, 2)
+        if self.iteration == 0:
+            self.state = self.model.switch_state_machine(state='joint')
+        images = torch.cat([batch['rgb'], batch['src_rgbs'].squeeze(0)], dim=0).cuda().permute(0, 3, 1, 2)
         all_feat_maps = self.model.feature_net(images)
 
         feat_maps = (all_feat_maps[0][1:, :32, ...], None) if args.coarse_only else \
@@ -81,22 +82,22 @@ class DBARFTrainer(IBRNetTrainer):
 
         pose_feats = all_feat_maps[0]
 
-        min_depth, max_depth = data_batch['depth_range'][0][0], data_batch['depth_range'][0][1]
+        min_depth, max_depth = batch['depth_range'][0][0], batch['depth_range'][0][1]
 
         # Start of core optimization loop
         pred_inv_depths, pred_rel_poses, sfm_loss, fmap = self.model.correct_poses(
             fmaps=pose_feats,
-            target_image=data_batch['rgb'].cuda(),
-            ref_imgs=data_batch['src_rgbs'].cuda(),
-            target_camera=data_batch['camera'],
-            ref_cameras=data_batch['src_cameras'],
+            target_image=batch['rgb'].cuda(),
+            ref_imgs=batch['src_rgbs'].cuda(),
+            target_camera=batch['camera'],
+            ref_cameras=batch['src_cameras'],
             min_depth=min_depth,
             max_depth=max_depth,
-            scaled_shape=data_batch['scaled_shape'])
+            scaled_shape=batch['scaled_shape'])
 
         # load training rays
-        ray_sampler = RaySamplerSingleImage(data_batch, self.device)
-        N_rand = int(1.0 * args.N_rand * args.num_source_views / data_batch['src_rgbs'][0].shape[0])
+        ray_sampler = RaySamplerSingleImage(batch, self.device)
+        N_rand = int(1.0 * args.N_rand * args.num_source_views / batch['src_rgbs'][0].shape[0])
 
         ray_batch = ray_sampler.random_sample(N_rand,
                                               sample_mode=args.sample_mode,
@@ -117,6 +118,8 @@ class DBARFTrainer(IBRNetTrainer):
                           N_importance=args.N_importance,
                           det=args.det,
                           white_bkgd=args.white_bkgd,
+                          inv_depth_prior=None, #inv_depth_prior, # TODO(chenyu): enabling the adaptive sampling when well tuned
+                          rel_poses=pred_rel_poses[:, -1, :]
                           inv_depth_prior=None, #inv_depth_prior, # TODO(chenyu): enabling the adaptive sampling when well tuned
                           rel_poses=pred_rel_poses[:, -1, :]
                         )
