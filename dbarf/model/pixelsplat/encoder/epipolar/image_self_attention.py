@@ -79,20 +79,20 @@ class ImageSelfAttention(nn.Module):
 
         # Put the tokens through a transformer.
         _, _, nh, nw = tokens.shape
-        # if nh>=20 :
-        #     for i in range(crop_size):
-        #         for j in range(crop_size):    
-        #             tokens_1=tokens[:,:,i*nh//crop_size:(i+1)*nh//crop_size,j*nw//crop_size:(j+1)*nw//crop_size]
-        #             tokens_1 = rearrange(tokens_1, "b c nh nw -> b (nh nw) c")
-        #             tokens_1 = self.transformer.forward(tokens_1)
-        #             tokens_1 = rearrange(tokens_1, "b (nh nw) c -> b c nh nw", nh=nh//crop_size, nw=nw//crop_size)
-        #             tokens[:,:,i*nh//crop_size:(i+1)*nh//crop_size,j*nw//crop_size:(j+1)*nw//crop_size]=tokens_1
-        # # Resample the tokens back to the original resolution.
-        # # tokens = rearrange(tokens, "b (nh nw) c -> b c nh nw", nh=nh, nw=nw)
-        # else:
-        tokens = rearrange(tokens, "b c nh nw -> b (nh nw) c")
-        tokens = self.transformer.forward(tokens)
-        tokens = rearrange(tokens, "b (nh nw) c -> b c nh nw", nh=nh, nw=nw)
+        if nh>=20 :
+            for i in range(crop_size):
+                for j in range(crop_size):    
+                    tokens_1=tokens[:,:,i*nh//crop_size:(i+1)*nh//crop_size,j*nw//crop_size:(j+1)*nw//crop_size]
+                    tokens_1 = rearrange(tokens_1, "b c nh nw -> b (nh nw) c")
+                    tokens_1 = self.transformer.forward(tokens_1)
+                    tokens_1 = rearrange(tokens_1, "b (nh nw) c -> b c nh nw", nh=nh//crop_size, nw=nw//crop_size)
+                    tokens[:,:,i*nh//crop_size:(i+1)*nh//crop_size,j*nw//crop_size:(j+1)*nw//crop_size]=tokens_1
+        # Resample the tokens back to the original resolution.
+        # tokens = rearrange(tokens, "b (nh nw) c -> b c nh nw", nh=nh, nw=nw)
+        else:
+            tokens = rearrange(tokens, "b c nh nw -> b (nh nw) c")
+            tokens = self.transformer.forward(tokens)
+            tokens = rearrange(tokens, "b (nh nw) c -> b c nh nw", nh=nh, nw=nw)
         
         tokens = self.resampler.forward(tokens)
 

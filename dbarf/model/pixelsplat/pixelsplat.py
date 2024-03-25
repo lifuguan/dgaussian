@@ -177,43 +177,42 @@ class PixelSplat(nn.Module):
         else:
             # features = self.encoder(batch["context"], global_step,None,4,4)
             # Run the model.
-            index_sort = np.argsort([int(s.item()) for s in batch["context"]["index"][0]])
-            str_current_idx = [str(item) for item in batch["context"]["index"][0].cpu().numpy()]
-            unused_indexs = set(list(self.last_ref_gaussians.keys())) - set(str_current_idx) 
-            if len(unused_indexs) > 0:
-                for unused_idx in tuple(unused_indexs):
-                   del self.last_ref_gaussians[unused_idx]
-            index_sort = np.argsort([int(s.item()) for s in batch["context"]["index"][0]])
-            gaussians = None
-            for k in range(len(index_sort)-1):
-                #index_sort[i] #代表会重新进行排序，可能需要重新训练
-                if str_current_idx[index_sort[k]] in self.last_ref_gaussians.keys(): # 如果已经计算过，则直接使用
-                    tmp_gaussians = self.last_ref_gaussians[str_current_idx[index_sort[k]]].detach()
-                else:
-                    tmp_batch = self.batch_cut(batch["context"], index_sort[k], index_sort[k+1])
-                    tmp_gaussians = self.encoder(tmp_batch, global_step,None,i,j, crop_size,True)   # 计算当前帧的gaussian
-                    self.last_ref_gaussians[str_current_idx[index_sort[k]]] = tmp_gaussians # 保存
-                    
-                if gaussians is None:
-                    gaussians: Gaussians = tmp_gaussians
-                else:
-                    gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
-                    gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
-                    gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
-                    gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
-
             # index_sort = np.argsort([int(s.item()) for s in batch["context"]["index"][0]])
-            # for k in range(batch["context"]["image"].shape[1] - 1):
-            #     tmp_batch = self.batch_cut(batch["context"],k, k+1)
-            #     tmp_gaussians = self.encoder(tmp_batch, global_step,None,i,j, crop_size,True) #默认进全图即i=5，j=5
-            #     if k == 0:
+            # str_current_idx = [str(item) for item in batch["context"]["index"][0].cpu().numpy()]
+            # unused_indexs = set(list(self.last_ref_gaussians.keys())) - set(str_current_idx) 
+            # if len(unused_indexs) > 0:
+            #     for unused_idx in tuple(unused_indexs):
+            #        del self.last_ref_gaussians[unused_idx]
+            # index_sort = np.argsort([int(s.item()) for s in batch["context"]["index"][0]])
+            # gaussians = None
+            # for k in range(len(index_sort)-1):
+            #     #index_sort[i] #代表会重新进行排序，可能需要重新训练
+            #     if str_current_idx[index_sort[k]] in self.last_ref_gaussians.keys(): # 如果已经计算过，则直接使用
+            #         tmp_gaussians = self.last_ref_gaussians[str_current_idx[index_sort[k]]].detach()
+            #     else:
+            #         tmp_batch = self.batch_cut(batch["context"], index_sort[k], index_sort[k+1])
+            #         tmp_gaussians = self.encoder(tmp_batch, global_step,None,i,j, crop_size,True)   # 计算当前帧的gaussian
+            #         self.last_ref_gaussians[str_current_idx[index_sort[k]]] = tmp_gaussians # 保存
+                    
+            #     if gaussians is None:
             #         gaussians: Gaussians = tmp_gaussians
             #     else:
             #         gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
             #         gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
             #         gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
             #         gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
-        # gaussians = self.encoder(batch['context'], global_step, False)
+
+            # index_sort = np.argsort([int(s.item()) for s in batch["context"]["index"][0]])
+            for k in range(batch["context"]["image"].shape[1] - 1):
+                tmp_batch = self.batch_cut(batch["context"],k, k+1)
+                tmp_gaussians = self.encoder(tmp_batch, global_step,None,i,j, crop_size,True) #默认进全图即i=5，j=5
+                if k == 0:
+                    gaussians: Gaussians = tmp_gaussians
+                else:
+                    gaussians.covariances = torch.cat([gaussians.covariances, tmp_gaussians.covariances], dim=1)
+                    gaussians.means = torch.cat([gaussians.means, tmp_gaussians.means], dim=1)
+                    gaussians.harmonics = torch.cat([gaussians.harmonics, tmp_gaussians.harmonics], dim=1)
+                    gaussians.opacities = torch.cat([gaussians.opacities, tmp_gaussians.opacities], dim=1)
             if False:
                 num_frames = 20            #插值的图片个数
                 t = torch.linspace(0, 1, num_frames, dtype=torch.float32, device='cuda')

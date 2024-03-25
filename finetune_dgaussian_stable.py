@@ -221,7 +221,7 @@ class DGaussianTrainer(BaseTrainer):
             self.scheduler.step()
 
         if self.config.local_rank == 0 and self.iteration % self.config.n_tensorboard == 0:
-            mse_error = img2mse(ret['rgb'], data_gt['rgb']).item()
+            mse_error = img2mse(ret['rgb'][0], data_gt['rgb'][0]).item()
             self.scalars_to_log['train/coarse-loss'] = mse_error
             self.scalars_to_log['train/coarse-psnr'] = mse2psnr(mse_error)
             # self.scalars_to_log['loss/final'] = loss_all.item()
