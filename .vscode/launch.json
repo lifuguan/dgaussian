@@ -166,10 +166,10 @@
                 // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003/model/model_002500.pth",
                 // "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
                 "++eval_dataset=waymo",
-                "++eval_scenes=[003]",    
+                "++eval_scenes=[126]",    
                 "++num_source_views=4",
                 "++render_video=True",
-                "++expname=ft_dgaussian_003",
+                "++expname=ft_dgaussian_126",
             ]
         },
         {

@@ -214,8 +214,6 @@ def eval(cfg_dict: DictConfig):
     video_depth_pred = []
     visdom_ins = visdom.Visdom(server='localhost', port=8097, env='splatam')
     for i, data in enumerate(test_loader):
-        if i>50:
-            break
         rgb_path = data['rgb_path'][0]
         file_id = os.path.basename(rgb_path).split('.')[0]
         src_rgbs = data['src_rgbs'][0].cpu().numpy()
@@ -313,9 +311,9 @@ def eval(cfg_dict: DictConfig):
                                                     'coarse_lpips': coarse_lpips,
                                                     'fine_lpips': fine_lpips,
                                                     }
-                      
-                video_rgb_pred.append(coarse_pred_rgb)
-                video_depth_pred.append(depth)
+                if i>2:      
+                    video_rgb_pred.append(coarse_pred_rgb)
+                    video_depth_pred.append(depth)
                 # v,_,_,_ = depth.shape
                 # for i in range(v): 
                 #     video_depth_pred.append(depth[i])
