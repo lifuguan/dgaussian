@@ -119,8 +119,8 @@ class BaseTrainer(object):
                                                    num_workers=self.config.workers,
                                                    pin_memory=True,
                                                    sampler=self.train_sampler,
-                                                   shuffle = False)
-                                                #    shuffle=True if self.train_sampler is None else False)
+                                                #    shuffle = False)
+                                                   shuffle=True if self.train_sampler is None else False)
 
         # Create validation dataset.
         self.val_dataset = dataset_dict[self.config.eval_dataset](self.config, 'validation',
@@ -221,7 +221,7 @@ class BaseTrainer(object):
                     self.train_sampler.set_epoch(self.epoch)
                 
                 # Main training logic.
-                self.train_iteration(batch=self.train_data)
+                self.train_iteration(data_batch=self.train_data)
 
                 if self.config.local_rank == 0:
                     # Main validation logic.

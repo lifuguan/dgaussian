@@ -149,7 +149,7 @@
         },
         {
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": "3",
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "name": "test:dgaussian-2",
@@ -162,14 +162,14 @@
                 "++rootdir=data/ibrnet/eval",
                 // "+ckpt_path=../pixelsplat/outputs/llff_generalized/checkpoints/llff_generalized_room29.ckpt",  // deferred 泛化权重
                 // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_019/model/model_002800.pth",
-                "+ckpt_path=pretrain_waymo/generalized_waymo_best.pth",
+                "+ckpt_path=data/ibrnet/train/out/ft_scannet_gt_final/model/model_014500.pth",
                 // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003/model/model_002500.pth",
                 // "+ckpt_path=data/ibrnet/train/out/waymo_generalized/generalized_waymo_best.pth", 
-                "++eval_dataset=waymo",
-                "++eval_scenes=[126]",    
+                "++eval_dataset=scannet",
+                "++eval_scenes=[0000_00]",    
                 "++num_source_views=4",
-                "++render_video=True",
-                "++expname=ft_dgaussian_126",
+                "++render_video=False",
+                "++expname=ft_dgaussian_scannet",
             ]
         },
         {
@@ -299,6 +299,35 @@
                 "++render_video=False"
             ]
         },
+
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "finetune:dgaussian-scannet",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/finetune_dgaussian_stable.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                "+ckpt_path=data/ibrnet/train/out/ft_scannet_gt/model/model_014000.pth",    // zui you fanhua
+                // "+ckpt_path=data/ibrnet/train/out/ft_dgaussian_003_ref_loss/model/model_001000.pth",
+                "++train_dataset=scannet",
+                "++eval_dataset=scannet",
+                "++eval_scenes=[0000_00]",
+                "++train_scenes=[0000_00]",
+                "++num_source_views=4",
+                "++expname=ft_dgaussian_scannet",
+                "++use_depth_loss=False",
+                "++use_pred_pose=False",
+                "++render_video=False"
+            ]
+        },
+
+
         {
             "env": {
                 "CUDA_VISIBLE_DEVICES": "0",
@@ -427,6 +456,33 @@
                 "++expname=ft_003"
             ]
         },
+        {
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "2",
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "name": "train:gaussian-scannet",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_dgaussian_stable.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "++rootdir=data/ibrnet/train",
+                // "+ckpt_path=data/ibrnet/train/out/low_res_room/model/model_005000.pth", // 使用低分辨率ft的权重试试
+                // "++ckpt_path=data/ibrnet/train/out/ft_scannet_gt/model/model_004000.pth",  // deferred 泛化权重
+                "++ckpt_path=data/ibrnet/train/out/ft_scannet_gt_final/model/model_014500.pth",
+                "++train_dataset=scannet",
+                "++eval_dataset=scannet",
+                "++train_scenes=[0000_00]",
+                "++num_source_views=4",
+                "++expname=ft_scannet_gt_final_pred_pose",
+                "++use_depth_loss=False",
+                "++use_pred_pose=True",
+                // "++render_video=False"
+            ]
+        },
+
         {
             "env": {
                 "CUDA_VISIBLE_DEVICES": "7",

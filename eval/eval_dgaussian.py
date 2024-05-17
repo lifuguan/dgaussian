@@ -214,6 +214,8 @@ def eval(cfg_dict: DictConfig):
     video_depth_pred = []
     visdom_ins = visdom.Visdom(server='localhost', port=8097, env='splatam')
     for i, data in enumerate(test_loader):
+        if i == 10:
+            break
         rgb_path = data['rgb_path'][0]
         file_id = os.path.basename(rgb_path).split('.')[0]
         src_rgbs = data['src_rgbs'][0].cpu().numpy()
@@ -329,7 +331,7 @@ def eval(cfg_dict: DictConfig):
                                                     range=tuple(data['depth_range'].squeeze().cpu().numpy()))
 
 
-            save_image(depth.permute(2,0,1), os.path.join(out_scene_dir, '{}_depth_vis_coarse.png'.format(file_id)))
+            # save_image(depth.permute(2,0,1), os.path.join(out_scene_dir, '{}_depth_vis_coarse.png'.format(file_id)))
 
             imageio.imwrite(os.path.join(out_scene_dir, f'{file_id}_pose_optimizer_gray_depth.png'),
                             (pred_depth.numpy() * 255.).astype(np.uint8))

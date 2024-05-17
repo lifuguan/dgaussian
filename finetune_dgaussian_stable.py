@@ -104,8 +104,8 @@ class DGaussianTrainer(BaseTrainer):
         #     self.state = self.model.switch_state_machine(state='nerf_only')
         # if self.iteration != 0 and self.iteration % 10000 == 0:
         #     self.state = self.model.switch_state_machine(state='joint')
-        if self.iteration == 0:
-            self.state = self.model.switch_state_machine(state='joint')
+        
+        self.state = self.model.switch_state_machine(state='joint')
 
         min_depth, max_depth = batch['depth_range'][0][0], batch['depth_range'][0][1]
         coefficient=1e-5

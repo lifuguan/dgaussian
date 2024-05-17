@@ -152,7 +152,7 @@ class PixelSplat(nn.Module):
             (h, w),
             depth_mode='depth'
             )
-            if True:
+            if False:
                 output_ref = self.decoder.forward(
                         gaussians,
                         batch["context"]["extrinsics"],
@@ -239,7 +239,7 @@ class PixelSplat(nn.Module):
                     depth_mode='depth'
                 )
                 
-                if True:
+                if False:
                     output_ref = self.decoder.forward(
                     gaussians,
                     batch["context"]["extrinsics"],

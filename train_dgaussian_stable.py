@@ -74,13 +74,13 @@ class DGaussianTrainer(BaseTrainer):
         # |--> (3) Jointly train the pose optimizer and ibrnet.           |
         # |             (10000 iterations)                                |
         # |-------------------------->------------------------------------|
-        if self.iteration % 7500 == 0 and (self.iteration // 7500) % 2 == 0:
-            self.state = self.model.switch_state_machine(state='pose_only')
-        elif self.iteration % 7500 == 0 and (self.iteration // 7500) % 2 == 1:
-            self.state = self.model.switch_state_machine(state='nerf_only')
-        if self.iteration != 0 and self.iteration % 15000 == 0:
-            self.state = self.model.switch_state_machine(state='joint')
-
+        # if self.iteration % 7500 == 0 and (self.iteration // 7500) % 2 == 0:
+        #     self.state = self.model.switch_state_machine(state='pose_only')
+        # elif self.iteration % 7500 == 0 and (self.iteration // 7500) % 2 == 1:
+        #     self.state = self.model.switch_state_machine(state='nerf_only')
+        # if self.iteration != 0 and self.iteration % 15000 == 0:
+        #     self.state = self.model.switch_state_machine(state='joint')
+        self.state = self.model.switch_state_machine(state='joint')
         min_depth, max_depth = data_batch['depth_range'][0][0], data_batch['depth_range'][0][1]
         
         # Start of core optimization loop
@@ -130,7 +130,7 @@ class DGaussianTrainer(BaseTrainer):
                 self.scalars_to_log['loss/smoothness_loss'] = sfm_loss['metrics']['smoothness_loss']
 
         if self.state == 'joint':
-            loss_all += loss_dict['self-sup-depth'].item() * 0.04
+            # loss_all += loss_dict['self-sup-depth'].item() * 0.04
             loss_all += self.model.compose_joint_loss(
                 loss_dict['sfm_loss'], loss_dict['gaussian_loss'], self.iteration)
         elif self.state == 'pose_only':
@@ -155,14 +155,14 @@ class DGaussianTrainer(BaseTrainer):
             self.scalars_to_log['train/coarse-psnr'] = mse2psnr(mse_error)
             self.scalars_to_log['loss/final'] = loss_all.item()
             self.scalars_to_log['loss/rgb_coarse'] = coarse_loss.detach().item()
-            # print(f"corse loss: {mse_error}, psnr: {mse2psnr(mse_error)}")
+            print(f"corse loss: {mse_error}, psnr: {mse2psnr(mse_error)}")
             self.scalars_to_log['lr/Gaussian'] = self.scheduler.get_last_lr()[0]
             self.scalars_to_log['lr/pose'] = self.pose_scheduler.get_last_lr()[0]
             
             aligned_pred_poses, poses_gt = align_predicted_training_poses(
                 pred_rel_poses[:, -1, :], self.train_data, self.train_dataset, self.config.local_rank)
             pose_error = evaluate_camera_alignment(aligned_pred_poses, poses_gt)
-            visualize_cameras(self.visdom, step=self.iteration, poses=[aligned_pred_poses, poses_gt], cam_depth=0.1)
+            # visualize_cameras(self.visdom, step=self.iteration, poses=[aligned_pred_poses, poses_gt], cam_depth=0.1)
 
             self.scalars_to_log['train/R_error_mean'] = pose_error['R_error_mean']
             self.scalars_to_log['train/t_error_mean'] = pose_error['t_error_mean']

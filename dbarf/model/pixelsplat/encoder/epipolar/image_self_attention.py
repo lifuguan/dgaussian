@@ -72,10 +72,10 @@ class ImageSelfAttention(nn.Module):
             xy, _ = sample_image_grid((nh*crop_size, nw*crop_size), device=image.device)
             xy = self.positional_encoding.forward(xy)[i*nh:(i+1)*nh,j*nw :(j+1)*nw, :]
 
-        # else:  #走nograd全图将index赋值为0
-        self.index=0
-        xy, _ = sample_image_grid((nh, nw), device=image.device)
-        xy = self.positional_encoding.forward(xy)
+        else:  #走nograd全图将index赋值为0
+            self.index=0
+            xy, _ = sample_image_grid((nh, nw), device=image.device)
+            xy = self.positional_encoding.forward(xy)
 
         # Put the tokens through a transformer.
         _, _, nh, nw = tokens.shape
