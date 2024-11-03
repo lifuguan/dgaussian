@@ -8,8 +8,8 @@ import torch
 import numpy as np
 
 from utils_loc import *
-from dbarf.geometry.align_poses import align_ate_c2b_use_a2b
-from dbarf.pose_util import rotation_distance
+from ggrt.geometry.align_poses import align_ate_c2b_use_a2b
+from ggrt.pose_util import rotation_distance
 
 from scipy.spatial.transform import Rotation
 

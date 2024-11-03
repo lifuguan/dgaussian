@@ -7,15 +7,15 @@ sys.path.append('../')
 
 from scipy.spatial.transform import Rotation
 
-from dbarf.base.checkpoint_manager import CheckPointManager
-from dbarf.config import config_parser
-from dbarf.model.dbarf import DBARFModel
+from ggrt.base.checkpoint_manager import CheckPointManager
+from ggrt.config import config_parser
+from ggrt.model.dbarf import DBARFModel
 from utils_loc import *
-from dbarf.data_loaders import dataset_dict
-from dbarf.pose_util import Pose
-from dbarf.geometry.align_poses import align_ate_c2b_use_a2b
-from dbarf.pose_util import rotation_distance
-from eval_dbarf import compose_state_dicts
+from ggrt.data_loaders import dataset_dict
+from ggrt.pose_util import Pose
+from ggrt.geometry.align_poses import align_ate_c2b_use_a2b
+from ggrt.pose_util import rotation_distance
+from eval.eval_dbarf import compose_state_dicts
 
 # os.environ["CUDA_VISIBLE_DEVICES"]="0"
 

@@ -21,15 +21,15 @@ import lpips
 
 from torch.utils.data import DataLoader
 
-from dbarf.base.checkpoint_manager import CheckPointManager
-from dbarf.config import config_parser
-from dbarf.sample_ray import RaySamplerSingleImage
-from dbarf.render_image import render_single_image
-from dbarf.model.ibrnet import IBRNetModel
+from ggrt.base.checkpoint_manager import CheckPointManager
+from ggrt.config import config_parser
+from ggrt.sample_ray import RaySamplerSingleImage
+from ggrt.render_image import render_single_image
+from ggrt.model.ibrnet import IBRNetModel
 from utils_loc import *
-from dbarf.projection import Projector
-from dbarf.data_loaders import dataset_dict
-from dbarf.loss.ssim_torch import ssim as ssim_torch
+from ggrt.projection import Projector
+from ggrt.data_loaders import dataset_dict
+from ggrt.loss.ssim_torch import ssim as ssim_torch
 
 # os.environ["CUDA_VISIBLE_DEVICES"]="0"
 

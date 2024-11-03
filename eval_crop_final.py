@@ -15,19 +15,19 @@ import lpips
 
 from torch.utils.data import DataLoader
 
-from dbarf.base.checkpoint_manager import CheckPointManager
-from dbarf.config import config_parser
-from dbarf.sample_ray import RaySamplerSingleImage
-from dbarf.render_image import render_single_image
-from dbarf.model.dbarf import DBARFModel
+from ggrt.base.checkpoint_manager import CheckPointManager
+from ggrt.config import config_parser
+from ggrt.sample_ray import RaySamplerSingleImage
+from ggrt.render_image import render_single_image
+from ggrt.model.dbarf import DBARFModel
 from utils_loc import *
-from dbarf.projection import Projector
-from dbarf.data_loaders import dataset_dict
-from dbarf.loss.ssim_torch import ssim as ssim_torch
-from dbarf.geometry.depth import inv2depth
-from dbarf.model.pixelsplat.decoder import get_decoder
-from dbarf.model.pixelsplat.encoder import get_encoder
-from dbarf.model.pixelsplat.pixelsplat_crop import PixelSplat
+from ggrt.projection import Projector
+from ggrt.data_loaders import dataset_dict
+from ggrt.loss.ssim_torch import ssim as ssim_torch
+from ggrt.geometry.depth import inv2depth
+from ggrt.model.pixelsplat.decoder import get_decoder
+from ggrt.model.pixelsplat.encoder import get_encoder
+from ggrt.model.pixelsplat.pixelsplat_crop import PixelSplat
 from concat import concat
 from compare import compare
 mse2psnr = lambda x: -10. * np.log(x+TINY_NUMBER) / np.log(10.)

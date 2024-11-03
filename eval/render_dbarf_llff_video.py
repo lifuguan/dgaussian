@@ -20,16 +20,16 @@ sys.path.append('../')
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
-from dbarf.base.checkpoint_manager import CheckPointManager
-from dbarf.config import config_parser
-from dbarf.sample_ray import RaySamplerSingleImage
-from dbarf.render_image import render_single_image
-from dbarf.model.dbarf import DBARFModel
+from ggrt.base.checkpoint_manager import CheckPointManager
+from ggrt.config import config_parser
+from ggrt.sample_ray import RaySamplerSingleImage
+from ggrt.render_image import render_single_image
+from ggrt.model.dbarf import DBARFModel
 from utils_loc import *
-from dbarf.projection import Projector
-from dbarf.data_loaders import get_nearest_pose_ids
-from dbarf.data_loaders.llff_data_utils import load_llff_data, batch_parse_llff_poses
-from dbarf.geometry.depth import inv2depth
+from ggrt.projection import Projector
+from ggrt.data_loaders import get_nearest_pose_ids
+from ggrt.data_loaders.llff_data_utils import load_llff_data, batch_parse_llff_poses
+from ggrt.geometry.depth import inv2depth
 
 
 

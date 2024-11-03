@@ -2,7 +2,7 @@ import os
 import argparse
 from pathlib import Path
 
-from dbarf.geometry.track import load_track_elements, TrackBuilder
+from ggrt.geometry.track import load_track_elements, TrackBuilder
 from scripts import extract_relative_poses
 
 

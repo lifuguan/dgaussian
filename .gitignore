@@ -18,3 +18,4 @@ homework_least_square.py
 waymo_gs_003
 eval_dbarf.py
 pretrain_waymo
+wandb

@@ -3,7 +3,7 @@ import argparse
 
 import numpy as np
 
-from dbarf.utils import read_colmap_model
+from ggrt.utils import read_colmap_model
 
 
 def load_colmap_data(input_dir):

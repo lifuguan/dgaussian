@@ -17,7 +17,7 @@ from scripts import extract_features, match_features, \
     pairs_from_retrieval, reconstruction, filter_matches
 from scripts.utils import read_all_keypoints, import_matches, \
     decompose_essential_matrix, read_camera_intrinsics_by_image_id
-from dbarf.geometry.rotation import Rotation
+from ggrt.geometry.rotation import Rotation
 
 
 def disambiguate_via_geodesic_consistency(database_path,
